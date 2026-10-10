@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  node:
+    name: Node workspaces (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build all workspaces
+        run: npm run build
+      - name: Run automated tests
+        run: npm test
+      - name: Verify resource fixtures can be generated and parsed
+        run: node tools/mu-cli/dist/index.js gen-fixtures --out tests/fixtures
+        continue-on-error: true

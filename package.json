@@ -1,0 +1,26 @@
+{
+  "name": "mu-reengineer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MU-REENGINEER: modern, optimized MU Online client + compatible server (research/engineering project)",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "bench": "npm run bench --workspaces --if-present",
+    "clean": "rm -rf packages/*/dist tools/*/dist",
+    "cli": "node tools/mu-cli/dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  }
+}
