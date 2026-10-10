@@ -99,6 +99,22 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 - **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
   are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
 
+### BMD animation and skinning — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+- `mu-formats` gained the animation module: key sampling with shortest-way rotation interpolation,
+  hierarchy composition and CPU skinning (`skinMesh`), plus `summarizeActions`. 11 automated tests
+  cover keys, interpolation, the 0/2π seam, sparse and dummy bones, invalid indices, matrix order,
+  hierarchy inheritance and animated normals.
+- `mu-cli export-obj` writes a deterministic Wavefront file, rest pose or baked with
+  `--action N --key K` (1 test); verified by hand on the generated model (rest 357 B → skinned 497 B,
+  first vertex follows the root bone to y = 0.2).
+- The client renderer animates characters: bones from the model, identity bind matrices (vertices live
+  in bone space), per-frame sampling through the same module and GPU skinning; the HUD reports
+  bones/actions/current key. Visual validation stays `PENDENTE DE VALIDAÇÃO HUMANA` (no GPU here).
+
+Measured (median of 3, `docs/PERFORMANCE.md`): animation sampling 364 598 op/s, CPU skinning
+185 990 op/s on the 3-bone fixture.
+
 ### View synchronisation + standalone server process — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
 - **Scope synchroniser** (`mu-server/src/game-server.ts`): each session remembers its view; after any

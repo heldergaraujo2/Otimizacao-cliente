@@ -74,7 +74,10 @@ function updateHud(): void {
     `framing/decrypt errors: ${session?.metrics.framingRejects ?? 0} / ${session?.metrics.decryptErrors ?? 0}`,
     `terrain       : ${renderer.stats.width}x${renderer.stats.height} tiles (${renderer.stats.terrainSource}), water ${renderer.stats.waterTiles}, safe ${renderer.stats.safeTiles}`,
     `objects       : ${renderer.stats.objects}`,
-    `model         : ${renderer.stats.meshVertices} vertices / ${renderer.stats.meshTriangles} triangles`,
+    `model         : ${renderer.stats.meshVertices} vertices / ${renderer.stats.meshTriangles} triangles` +
+      (renderer.stats.bones > 0
+        ? `, ${renderer.stats.bones} bones / ${renderer.stats.actions} actions (action ${renderer.animation.action}, key ${renderer.animation.key.toFixed(1)})`
+        : ''),
     `data directory: ${assetIndexLine}`,
     `controls      : WASD / arrow keys to walk`,
   ].join('\n');
@@ -194,6 +197,11 @@ function loop(): void {
 function pumpInput(): void {
   if (!session || !playerName) return;
   const now = performance.now();
+  // no key held: back to the idle clip
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].some((key) => pressed.has(key))) {
+    renderer.setAction(0);
+    return;
+  }
   if (now - lastWalkAt < 180) return;
 
   let dx = 0;
@@ -213,6 +221,10 @@ function pumpInput(): void {
   const outcome = session.walk([direction]);
   const view = renderer.getCharacter(selfId ?? -1);
   if (view && outcome.ok) renderer.setTarget(view.id, outcome.x, outcome.y);
+  // BMD actions are unnamed: index 0 is the natural idle/stand clip, the walk clip (when the model has
+  // one) is played while moving. Real models have several actions, so this is a convention, not a guess
+  // baked into the parser.
+  renderer.setAction(renderer.stats.actions > 1 ? 2 : 0);
 }
 
 function pumpPing(): void {

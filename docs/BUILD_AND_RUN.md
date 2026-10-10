@@ -113,6 +113,13 @@ npm run dev -w @mu-reengineer/client
 
 No real data at hand? Write a synthetic data directory in the classic server layout:
 
+Inspect a model (works on generated fixtures and on your own real files):
+
+```bash
+npm run cli -- export-obj tests/fixtures/model_v12.bmd /tmp/model.obj                    # rest pose
+npm run cli -- export-obj <your.bmd> /tmp/posed.obj --action 0 --key 3.5                 # baked pose
+```
+
 ```bash
 node scripts/make-demo-data.mjs                       # -> assets-local/demo-data (gitignored)
 node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data

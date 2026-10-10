@@ -12,4 +12,5 @@ export * from './crypto/modulus-cryptor.js';
 export * from './format/bmd.js';
 export * from './format/texture.js';
 export * from './format/terrain.js';
+export * from './format/animation.js';
 export * from './testing/fixtures.js';

@@ -2,6 +2,58 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 10: BMD animation + skinning, OBJ exporter, animated client
+
+**Changes**
+
+- `packages/mu-formats/src/format/animation.ts` (new): `sampleBoneTransform` (linear key sampling with
+  **shortest-way rotation interpolation** across the 0/2π seam), `transformToMatrix`, `multiplyMatrix`,
+  `transformPoint`/`transformDirection`, `computeBoneWorldMatrices` (hierarchy composition with cycle
+  safety), `skinMesh` (CPU skinning — the reference implementation), `summarizeActions`. Matrices are
+  column-major 4x4 so the renderer consumes them without transposition. Vertices are stored in bone
+  space with weight 1, which makes `boneWorldMatrix[node] * position` exact — documented in the module.
+- `tools/mu-cli`: new `export-obj <file.bmd> <out.obj> [--action N --key K]` — deterministic Wavefront
+  export, rest pose or baked/skinned pose, one group per mesh, texture paths as comments.
+- Client renderer: characters are now **skinned**: the bone hierarchy is built from the model, the mesh
+  is bound with identity bind matrices and every frame the clip is sampled through `mu-formats` to drive
+  the bones (GPU skinning) — the same matrices the tested CPU path computes. Clips are switchable
+  (`setAction`), the HUD shows bones/actions/current key, and the page plays the walk clip while moving
+  and the idle clip otherwise. The BMD Z-up space is converted once (`-90°` about X).
+- `formats-bench`: two new reproducible benchmarks for animation sampling and CPU skinning.
+
+**Tests executed**
+
+| Command | Result |
+| --- | --- |
+| `npm run build` | clean |
+| `npm test` | protocol 42/42 · formats 33/33 · client 15/15 · server 9/9 · cli 9/9 · gateway 7/7 — **115/115, 0 fail** |
+
+**New measurements** (`docs/PERFORMANCE.md`, median of 3 runs, same 2-vCPU container)
+
+```
+BMD animation: sample every bone, compose hierarchy   200 000 iters   548.5 ms   364 598 op/s
+BMD animation: CPU skin one mesh (7 corners)          200 000 iters  1075.3 ms   185 990 op/s
+```
+
+**Verified by hand**
+
+```bash
+node tools/mu-cli/dist/index.js export-obj /tmp/fx2/model_v12.bmd /tmp/fx2/model_v12.obj
+#   model MU-REENGINEER-test (BMD v12) · 1 mesh · 7 vertices · 2 faces · 3 bones · 1 action · as stored
+node tools/mu-cli/dist/index.js export-obj /tmp/fx2/model_v12.bmd /tmp/fx2/model_anim.obj --action 0 --key 1.5
+#   pose: skinned (baked from the action/key given) — 497 bytes, first vertex moves with the root bone
+```
+
+**Notes / limitations**
+
+1. BMD actions carry **no names**; the mapping idle/walk/attack is a client convention (indices), which
+   must be confirmed against a real model (`docs/COMPATIBILITY.md` §6).
+2. Skinning weights are not interpolated: MU binds one bone per vertex with weight 1, so the GPU path
+   uses three.js skinning with identity bind matrices and no blend. If a future format variant has
+   weights, `skinMesh` (CPU) is the reference to extend.
+3. The rendered result still cannot be verified here (no GPU): the numbers above are CPU costs, and the
+   visual/animation check stays `PENDENTE DE VALIDAÇÃO HUMANA`.
+
 ## 2026-10-10 — cycle 9: view synchronisation, standalone server process, Level 4
 
 **Changes**

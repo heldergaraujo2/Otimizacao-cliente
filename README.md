@@ -13,11 +13,11 @@ protocol-compatible server and the tooling needed to prove both.
 | Component | State | Evidence |
 | --- | --- | --- |
 | `packages/mu-protocol` — MU wire protocol (framing, XOR3/XOR32, SimpleModulus, packet codecs) | CONCLUÍDO COM EVIDÊNCIAS | 35 automated tests green, byte-exact vector replay against OpenMU (MIT), benchmarks recorded |
-| `packages/mu-formats` — resource formats (FileCryptor, ModulusCryptor, LEA-256, BMD, OZT/OZB/OZJ/DDS/TGA, ATT/MAP/OBJ, PNG export) | EM ANDAMENTO | 22 automated tests green over self-generated fixtures; real-game-data conformance still pending |
+| `packages/mu-formats` — resource formats (FileCryptor, ModulusCryptor, LEA-256, BMD + animation/skinning, OZT/OZB/OZJ/DDS/TGA, ATT/MAP/OBJ, PNG export) | EM ANDAMENTO | 33 automated tests green over self-generated fixtures; benchmarks recorded; real-game-data conformance still pending |
 | `packages/mu-server` — headless protocol-compatible server | CONCLUÍDO COM EVIDÊNCIAS (vertical slice) | 9 tests (world rules) + real-socket integration test: connect server, login, character list/select, map change, scope, movement authority, ping, disconnect cleanup |
 | `packages/mu-client` — the modernised client | EM ANDAMENTO | headless core + resource loader (case-insensitive resolution, cache keyed by path+size+mtime) + browser renderer (three.js) that renders either the generated fixtures or real files through the gateway asset route; 12 tests (6 integration, 6 loader); live WebSocket preview driven end to end; visuals need a GPU (human validation) |
 | `tools/mu-gateway` — WebSocket ↔ TCP gateway + asset route for the browser | CONCLUÍDO COM EVIDÊNCIAS | 7 tests: session through the bridge, `/health`, per-connection isolation, `/assets/` byte-exactness, case-insensitive lookups, helpful 404s, traversal refusal; measured bridge overhead 0.113 ms/ping |
-| `tools/mu-cli` — inspection/export CLI | CONCLUÍDO COM EVIDÊNCIAS | 8 automated tests; `gen-fixtures` disk round-trip (10/10), `inspect`/`scan`/`export-png`/`decode-packet` verified manually |
+| `tools/mu-cli` — inspection/export CLI | CONCLUÍDO COM EVIDÊNCIAS | 9 automated tests; `gen-fixtures` disk round-trip (10/10), `inspect`/`scan`/`export-png`/`decode-packet` verified manually |
 | Continuous integration | CONCLUÍDO COM EVIDÊNCIAS (local equivalent) | `.github/workflows/ci.yml`: install → build → `npm test` (93 tests across 6 workspaces) → `mu-cli gen-fixtures` + `scan` on Node 22 |
 
 Nothing in this repository redistributes game assets: proprietary data is read from the

@@ -28,7 +28,8 @@ algorithms throw `UnsupportedCipherError` naming the algorithm — no silent gar
 
 | Resource | Reader | Notes |
 | --- | --- | --- |
-| BMD models | `parseBmd`, `extractMeshGeometry`, `summarizeBmd` | v0/v12/v15; 32-byte names, vertices 16 B, normals 20 B, UV 8 B, triangles 64 B (poly 3/4), texture path, actions (LE16 keys + lock flag), bone hierarchy (dummy bones skipped, per-action position/rotation, euler→quaternion) |
+| BMD animation | `sampleBoneTransform`, `computeBoneWorldMatrices`, `skinMesh`, `summarizeActions` | key sampling with shortest-way rotation interpolation, hierarchy composition and CPU skinning; vertices are stored in bone space and bound with weight 1, so `boneWorldMatrix[vertex.node] * position` is exact — the same matrices drive the GPU skinner in the client |
+| BMD models | `parseBmd`, `extractMeshGeometry`, `summarizeBmd`, `bmdEulerToQuaternion` | v0/v12/v15; 32-byte names, vertices 16 B, normals 20 B, UV 8 B, triangles 64 B (poly 3/4), texture path, actions (LE16 keys + lock flag), bone hierarchy (dummy bones skipped, per-action position/rotation, euler→quaternion) |
 | Textures | `decodeOzt`, `decodeOzb`, `inspectOzj`, `decodeTga`, `decodeDds`, `detectTextureFormat` | OZT = 32-bit BGRA bottom-up; OZB = `BM6` 24-bit / `BM8` 8-bit + palette; OZJ exposes the embedded JPEG window; TGA types 2/10; DDS DXT1/3/5 + uncompressed |
 | Terrain flags | `parseAtt`, `countFlag`, `TwFlags` | 256×256+4 header, byte or extended (LE16) attributes, BUX XOR applied |
 | Terrain ground | `parseMap` | version, map number, three 65536-entry layers (texture indices + alpha blend) |

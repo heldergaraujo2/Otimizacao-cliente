@@ -10,12 +10,14 @@ import {
   buildDdsFixture,
   buildObjFixture,
   buildOztFixture,
+  computeBoneWorldMatrices,
   decryptFileCryptor,
   decodeDds,
   decodeOzt,
   extractMeshGeometry,
   parseBmd,
   parseObj,
+  skinMesh,
 } from '../index.js';
 import { encodePng } from '../png.js';
 
@@ -97,6 +99,20 @@ function main(): void {
     bench('BMD v12: extractMeshGeometry', bmd12.length, 5000, () => {
       const model = parseBmd(bmd12);
       for (const mesh of model.meshes) extractMeshGeometry(mesh);
+    }),
+  );
+
+  // --- animation sampling and skinning ---------------------------------------------------------
+  const animModel = parseBmd(bmd12);
+  const animMesh = animModel.meshes[0]!;
+  results.push(
+    bench('BMD anim: sample every bone (1 action)', animModel.bones.length * 32, 200_000, () => {
+      computeBoneWorldMatrices(animModel, 0, 1.5);
+    }),
+  );
+  results.push(
+    bench('BMD anim: CPU skin a mesh (7 corners)', animMesh.vertices.length * 32, 200_000, () => {
+      skinMesh(animModel, animMesh, 0, 1.5);
     }),
   );
 

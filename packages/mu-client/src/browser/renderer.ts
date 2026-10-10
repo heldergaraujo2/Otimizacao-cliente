@@ -10,7 +10,10 @@
 import * as THREE from 'three';
 
 import {
+  bmdEulerToQuaternion,
+  computeBoneWorldMatrices,
   extractMeshGeometry,
+  sampleBoneTransform,
   TwFlags,
   type AttData,
   type BmdModel,
@@ -23,6 +26,16 @@ export interface RendererOptions {
   canvas: HTMLCanvasElement;
   /** Tile span rendered around the map centre (the maps are 256x256 tiles). */
   tileSpan: number;
+  /** Animation speed in keys per second when playing a clip (default 8). */
+  keysPerSecond?: number;
+}
+
+/** One playable animation state (a BMD action index plus its playhead). */
+export interface AnimationState {
+  action: number;
+  key: number;
+  keysPerSecond: number;
+  playing: boolean;
 }
 
 export interface CharacterView {
@@ -42,6 +55,8 @@ export interface RendererStats {
   objects: number;
   meshVertices: number;
   meshTriangles: number;
+  bones: number;
+  actions: number;
   terrainSource: string;
 }
 
@@ -63,6 +78,8 @@ export class MuRenderer {
     objects: 0,
     meshVertices: 0,
     meshTriangles: 0,
+    bones: 0,
+    actions: 0,
     terrainSource: 'none',
   };
 
@@ -73,12 +90,18 @@ export class MuRenderer {
   private readonly clock = new THREE.Clock();
   private readonly tileSpan: number;
   private model?: BmdModel;
+  private skinnedRoot?: THREE.Object3D;
+  private bones: THREE.Bone[] = [];
+  private actionsPerSecond = 8;
+  readonly animation: AnimationState = { action: 0, key: 0, keysPerSecond: 8, playing: true };
   private frames = 0;
   private lastFpsUpdate = 0;
   private fps = 0;
 
   constructor(options: RendererOptions) {
     this.tileSpan = options.tileSpan;
+    this.actionsPerSecond = options.keysPerSecond ?? 8;
+    this.animation.keysPerSecond = this.actionsPerSecond;
     this.renderer = new THREE.WebGLRenderer({ canvas: options.canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
@@ -158,13 +181,69 @@ export class MuRenderer {
     }
   }
 
-  /** Sets the model used for every character (rebuilds the meshes of characters already in the scene). */
+  /**
+   * Sets the model used for every character. Existing characters are rebuilt, so the call is safe at
+   * any time (for example after the real model arrives from the gateway).
+   */
   setCharacterModel(model: BmdModel): void {
     this.model = model;
+    this.animation.action = 0;
+    this.animation.key = 0;
+    this.skinnedRoot = this.buildCharacterModel();
     for (const view of this.characters.values()) {
       view.mesh.remove(...view.mesh.children.filter((child) => child.name === 'model'));
-      view.mesh.add(this.buildCharacterMesh());
+      view.mesh.add(this.buildCharacterModel());
     }
+  }
+
+  get modelSummary(): { name: string; meshes: number; bones: number; actions: number; keys: number } | undefined {
+    if (!this.model) return undefined;
+    return {
+      name: this.model.name,
+      meshes: this.model.meshes.length,
+      bones: this.model.bones.length,
+      actions: this.model.actions.length,
+      keys: this.model.actions[this.animation.action]?.numAnimationKeys ?? 0,
+    };
+  }
+
+  /** Switches the clip played by every character (BMD actions are unnamed, so this is by index). */
+  setAction(action: number): void {
+    if (!this.model || action < 0 || action >= this.model.actions.length) return;
+    if (this.animation.action === action) return;
+    this.animation.action = action;
+    this.animation.key = 0;
+  }
+
+  /**
+   * Advances the animation playhead and re-poses every skinned character.
+   *
+   * MU models store vertices in bone space, so a bone's *world* matrix is exactly the matrix the skin
+   * shader needs: the mesh is bound with identity bind matrices and the GPU applies the same matrices
+   * the CPU implementation in `mu-formats` (tested) computes.
+   */
+  private updateAnimation(delta: number): void {
+    if (!this.model) return;
+    const action = this.model.actions[this.animation.action];
+    if (!action || action.numAnimationKeys === 0) return;
+
+    if (this.animation.playing) {
+      const keys = action.numAnimationKeys;
+      this.animation.key = (this.animation.key + delta * this.animation.keysPerSecond) % keys;
+    }
+    const matrices = computeBoneWorldMatrices(this.model, this.animation.action, this.animation.key);
+
+    for (let i = 0; i < this.bones.length; i++) {
+      const bone = this.bones[i]!;
+      const sample = sampleBoneTransform(this.model, i, this.animation.action, this.animation.key);
+      const quaternion = bmdEulerToQuaternion(sample.rotation);
+      bone.position.set(sample.position.x, sample.position.y, sample.position.z);
+      bone.quaternion.set(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
+      bone.matrix.fromArray(matrices.subarray(i * 16, i * 16 + 16) as Float32Array);
+    }
+    // the engine still needs consistent world matrices for culling and the shader
+    this.skinnedRoot?.updateMatrixWorld(true);
+    for (const view of this.characters.values()) view.mesh.updateMatrixWorld(true);
   }
 
   /** Creates (or updates) the visual representation of a character. */
@@ -178,7 +257,7 @@ export class MuRenderer {
 
     const group = new THREE.Group();
     group.name = `character-${name}`;
-    group.add(this.buildCharacterMesh());
+    group.add(this.buildCharacterModel());
 
     const marker = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshStandardMaterial({ color: 0x66ccff }));
     marker.name = 'marker';
@@ -223,6 +302,7 @@ export class MuRenderer {
   /** Renders one frame: smoothing, camera follow and the FPS meter. */
   render(focus: { x: number; y: number }): void {
     const delta = this.clock.getDelta();
+    this.updateAnimation(delta);
     for (const view of this.characters.values()) {
       const step = Math.min(1, delta * 12);
       view.x += (view.targetX - view.x) * step;
@@ -243,28 +323,73 @@ export class MuRenderer {
     }
   }
 
-  private buildCharacterMesh(): THREE.Object3D {
-    if (!this.model || this.model.meshes.length === 0) {
+  /**
+   * Builds the visual for one character: a skinned mesh with the model's bone hierarchy, or a capsule
+   * placeholder when no model is loaded yet.
+   */
+  private buildCharacterModel(): THREE.Object3D {
+    const model = this.model;
+    if (!model || model.meshes.length === 0) {
       const capsule = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.4, 1.2),
-        new THREE.MeshStandardMaterial({ color: 0xd0a070, name: 'placeholder' }),
+        new THREE.MeshStandardMaterial({ color: 0xd0a070 }),
       );
       capsule.name = 'model';
+      // the placeholder is authored in the same Z-up space as the models
+      capsule.rotation.x = -Math.PI / 2;
       return capsule;
     }
-    const geometry: MeshGeometry = extractMeshGeometry(this.model.meshes[0]!);
+
+    const root = new THREE.Group();
+    root.name = 'model';
+
+    // bone hierarchy from the BMD bone list (parents come first in the format)
+    const bones: THREE.Bone[] = model.bones.map((bone) => {
+      const node = new THREE.Bone();
+      node.name = bone.name;
+      return node;
+    });
+    for (let i = 0; i < bones.length; i++) {
+      const parent = model.bones[i]!.parent;
+      if (parent >= 0 && parent < bones.length && parent !== i) bones[parent]!.add(bones[i]!);
+    }
+    const skeleton = new THREE.Skeleton(bones, bones.map(() => new THREE.Matrix4()));
+    // vertices are stored in bone space: the bind matrices are the identity, so the shader applies the
+    // animated bone matrices directly (same maths as the tested CPU skinning)
+    const identity = new THREE.Matrix4();
+    skeleton.calculateInverses();
+    for (const inverse of skeleton.boneInverses) inverse.identity();
+
+    const mesh = model.meshes[0]!;
+    const geometry = extractMeshGeometry(mesh);
     const buffer = new THREE.BufferGeometry();
     buffer.setAttribute('position', new THREE.BufferAttribute(geometry.positions, 3));
+    buffer.setAttribute('normal', new THREE.BufferAttribute(geometry.normals, 3));
     buffer.setAttribute('uv', new THREE.BufferAttribute(geometry.uvs, 2));
-    buffer.computeVertexNormals(); // skinning/animation is not wired yet, so bind-pose normals are fine
+    buffer.setAttribute('skinIndex', new THREE.BufferAttribute(geometry.skinIndices, 1));
+    buffer.setAttribute('skinWeight', new THREE.BufferAttribute(geometry.skinWeights, 1));
+    buffer.setAttribute('color', new THREE.BufferAttribute(
+      new Float32Array(geometry.vertexCount * 3).fill(1),
+      3,
+    ));
 
-    const mesh = new THREE.Mesh(
+    const skinned = new THREE.SkinnedMesh(
       buffer,
-      new THREE.MeshStandardMaterial({ color: 0xcfcfd8, roughness: 0.6, metalness: 0.15, flatShading: true }),
+      new THREE.MeshStandardMaterial({ color: 0xcfcfd8, roughness: 0.6, metalness: 0.15, flatShading: false }),
     );
-    mesh.name = 'model';
+    skinned.name = 'skin';
+    skinned.add(bones[0]!);
+    if (bones.length > 0) skinned.bind(skeleton, identity);
+
+    // the BMD coordinate system is Z-up; three.js is Y-up
+    root.rotation.x = -Math.PI / 2;
+    root.add(skinned);
+
     this.stats.meshVertices = geometry.vertexCount;
     this.stats.meshTriangles = geometry.triangleCount;
-    return mesh;
+    this.stats.bones = bones.length;
+    this.stats.actions = model.actions.length;
+    this.bones = bones;
+    return root;
   }
 }

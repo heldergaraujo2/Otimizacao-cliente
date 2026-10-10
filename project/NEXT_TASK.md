@@ -2,10 +2,10 @@
 
 **Updated:** 2026-10-10 · **Branch:** session branch (`arena/ef58bc1d-otimizacao-cliente`)
 
-> **Start here:** Priorities 1–3 are finished and the resource layer (loader cache + gateway asset
-> route) landed in cycle 6. Next: **Priority 4** — texture binding and BMD animation playback in the
-> renderer, scope removal on disconnect, a standalone server entry point, movement reconciliation, and
-> the human validation of Levels 5–7.
+> **Start here:** Priorities 1–3 are finished; cycles 6–10 added the resource loader + asset route,
+> view synchronisation, a standalone server process, Level 4 process tests, the shared movement model
+> and BMD animation/skinning. Next: **Priority 4** — texture binding for real files, monster/NPC and
+> item packets, and the human validation of Levels 5–7 (all listed below).
 
 ## Priority 1 — `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
@@ -106,7 +106,8 @@ validation remains human-only (no GPU here).
 - Client: movement prediction/reconciliation so the local player does not depend on server echoes.
 - Client: bind decoded textures (OZT/OZB/DDS/TGA — the loader already decodes them) to the terrain
   material; today the palette derives from tile attributes and texture indices even for real files.
-- Client: BMD action playback (clips are parsed; the mesh renders in bind pose).
+- Client: confirm the action-index convention (idle/walk/attack) against a real model, and add item/
+  monster packets so the scene is not just players.
 - Server: `RemoveCharactersFromScope` (C2 13) when a character disconnects or leaves the scope box.
 - Client: draw distance / instancing once real maps are available; HUD already exposes the metrics.
 

@@ -16,6 +16,12 @@ export async function writeBytes(file: string, data: Uint8Array): Promise<void> 
   await writeFile(file, data);
 }
 
+/** Writes UTF-8 text, creating the parent directory (used by the OBJ exporter). */
+export async function writeText(file: string, text: string): Promise<void> {
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, text, 'utf8');
+}
+
 const DEFAULT_SKIP = new Set(['node_modules', '.git', '.svn', 'dist']);
 
 /** Recursively lists files, skipping VCS/build directories. Deterministic order (sorted). */

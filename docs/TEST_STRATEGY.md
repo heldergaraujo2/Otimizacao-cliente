@@ -57,10 +57,13 @@ playback, visual regression when tooling allows.
 **State: EM ANDAMENTO** — the resource half is covered by automated tests: the loader
 (`packages/mu-client/src/test/resources.test.ts`, 6 tests: bundle loading with case-insensitive paths,
 cache hit and invalidation on file replacement, close-candidate 404s, traversal refusal, texture
-decoding, environment-based root) and the gateway asset route
-(`tools/mu-gateway/src/test/assets.test.ts`, 4 tests: byte-exact serving, index, 404 hints without
-leaking absolute paths, 405/HEAD handling). Rendering is implemented and served as a live preview, but
-**visual validation needs a GPU and real assets** — `PENDENTE DE VALIDAÇÃO HUMANA`.
+decoding, environment-based root), the gateway asset route (`tools/mu-gateway/src/test/assets.test.ts`,
+4 tests) and **the animation path** (`packages/mu-formats/src/test/animation.test.ts`, 11 tests: key
+lookup, linear interpolation, shortest-way rotation across the 0/2π seam, sparse/dummy bones, invalid
+indices, matrix composition, hierarchy inheritance, skinning at rest and animated, normal rotation). The
+CLI can bake any pose to Wavefront OBJ (`export-obj --action N --key K`, 1 test), so a user can inspect
+animations without the client. Rendering is implemented and served as a live preview, but **visual
+validation needs a GPU and real assets** — `PENDENTE DE VALIDAÇÃO HUMANA`.
 
 ## Level 6 — performance
 

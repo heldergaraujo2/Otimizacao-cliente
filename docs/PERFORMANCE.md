@@ -27,6 +27,21 @@ Measured with the real stack (server on loopback, `demo` session, 400 pings afte
 Method: sequential request/response (latency-bound, single connection), loopback, same 2-vCPU container
 as above; `docs/TEST_STRATEGY.md` Level 6/7 still requires a real network for the honest numbers.
 
+### Animation and skinning (`mu-formats`, 2026-10-10)
+
+Three runs (median reported), same container as above; the sandbox spread warning of §2 still applies.
+
+| Benchmark | Iterations | Median time | Throughput | Bandwidth |
+| --- | --- | --- | --- | --- |
+| BMD animation: sample every bone, compose hierarchy | 200 000 | 548.5 ms | 364 598 op/s | 33.4 MiB/s |
+| BMD animation: CPU skin one mesh (7 corners) | 200 000 | 1 075.3 ms | 185 990 op/s | 22.7 MiB/s |
+
+Runs: sampling 364 598 / 395 304 / 349 723 op/s; skinning 189 823 / 162 017 / 185 990 op/s. The fixture
+mesh is tiny (7 corners, 3 bones), so the numbers are dominated by call overhead: the useful conclusion
+is that sampling the hierarchy for a handful of bones costs microseconds, which is why the browser
+renderer can re-pose every character on the CPU **and** hand the same matrices to the GPU skinner
+without a measurable cost at the frame rates involved.
+
 ### Wire protocol (`npm run bench -w @mu-reengineer/protocol`)
 
 | Benchmark | Iterations | Time | Throughput | Bandwidth |

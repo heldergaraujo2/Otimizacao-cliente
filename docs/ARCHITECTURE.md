@@ -87,8 +87,14 @@ Design notes:
   into browser code and the same build works behind the preview proxy.
 - The gateway keeps one TCP connection per WebSocket, so cipher counters and the session state stay
   per-connection (proved by the "two clients are independent" test).
-- Movement is predicted locally and confirmed by the server's `ObjectWalked` broadcast (reconciliation
-  is the next step).
+- Movement is predicted locally with the **shared** movement model (`@mu-reengineer/protocol`,
+  `applyWalk`): the same function the server validates with, so prediction and authority cannot drift
+  apart. A rejected prediction triggers a scope refresh, and the authoritative self position from the
+  scope packets is adopted (`resyncPosition`).
+- Characters are animated with the BMD skeleton: the renderer builds three.js bones from the model's
+  bone list, binds the mesh with **identity** bind matrices (vertices are stored in bone space) and,
+  every frame, samples the clip through `mu-formats` (`computeBoneWorldMatrices`) to drive both the
+  bone transforms and the GPU skinning.
 - Resources: the node side uses `packages/mu-client/src/resources/loader.ts` (case-insensitive
   resolution for Windows data trees, cache keyed by resolved path + size + mtime, close-candidate hints
   on 404). The browser reaches the same data through the gateway's `/assets/` route, which resolves

@@ -12,12 +12,16 @@ import { formatFixtures, generateFixtures } from './commands/fixtures.js';
 import { formatDecodedPacket, decodePacketHex } from './commands/packets.js';
 import { formatScanReport, scanDirectory } from './commands/scan.js';
 import { formatExport, exportTexture } from './commands/textures.js';
+import { exportObj, formatExportObj } from './commands/obj.js';
 
 const HELP = `mu-cli — MU-REENGINEER resource and protocol tool
 
 Usage:
   mu-cli inspect <file> [--json]                 identify a file and summarise its structure
   mu-cli export-png <file> <out.png>             decode a texture to PNG (OZJ → embedded .jpg)
+  mu-cli export-obj <file.bmd> <out.obj> [--action N --key K]
+                                                 write a BMD mesh as Wavefront OBJ (optionally
+                                                 skinned/baked at an animation key)
   mu-cli scan <dir> [--json] [--limit N]         classify a whole data directory (real-data report)
   mu-cli gen-fixtures --out <dir> [--json]       write and re-parse the deterministic fixtures
   mu-cli decode-packet <hex> [--direction c2s|s2c] [--xor32]
@@ -28,6 +32,8 @@ Options:
   --json            machine-readable output
   --limit N         stop after N files (scan)
   --direction       packet travel direction: c2s = client sent it (default), s2c = server sent it
+  --action N        animation action index (export-obj)
+  --key K           animation key/time within the action (export-obj, fractional allowed)
   --xor32           apply the XOR32 stream mask before decrypting the packet
 
 Environment:
@@ -44,7 +50,7 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs {
   const positionals: string[] = [];
   const flags = new Map<string, string | true>();
-  const valueFlags = new Set(['out', 'limit', 'direction']);
+  const valueFlags = new Set(['out', 'limit', 'direction', 'action', 'key']);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg.startsWith('--')) {
@@ -95,6 +101,19 @@ async function main(argv: string[]): Promise<number> {
       if (!source || !output) throw new Error('export-png requires <file> and <out.png>');
       const result = await exportTexture(source, output);
       print(asJson ? [JSON.stringify(result, null, 2)] : formatExport(result));
+      return 0;
+    }
+
+    case 'export-obj': {
+      const [source, output] = args.positionals;
+      if (!source || !output) throw new Error('export-obj requires <file.bmd> and <out.obj>');
+      const action = args.flags.get('action');
+      const key = args.flags.get('key');
+      const result = await exportObj(source, output, {
+        action: typeof action === 'string' ? Number.parseInt(action, 10) : undefined,
+        key: typeof key === 'string' ? Number.parseFloat(key) : undefined,
+      });
+      print(asJson ? [JSON.stringify(result, null, 2)] : formatExportObj(result));
       return 0;
     }
 

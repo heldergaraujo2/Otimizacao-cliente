@@ -18,6 +18,7 @@ import { generateFixtures } from '../commands/fixtures.js';
 import { inspectBytes, inspectFile } from '../commands/inspect.js';
 import { decodePacketHex } from '../commands/packets.js';
 import { scanDirectory } from '../commands/scan.js';
+import { exportObj } from '../commands/obj.js';
 import { exportTexture } from '../commands/textures.js';
 import { buildBmdFixture } from '@mu-reengineer/formats';
 
@@ -102,6 +103,51 @@ test('export-png writes a valid PNG and extracts OZJ JPEG payloads', async () =>
     const dds = await exportTexture(path.join(dir, 'dxt1.dds'), path.join(dir, 'dxt1.png'));
     assert.equal(dds.width, 4);
     assert.equal(dds.height, 4);
+  });
+});
+
+test('export-obj writes a deterministic Wavefront file, optionally skinned', async () => {
+  await withTempDir(async (dir) => {
+    const source = path.join(dir, 'model.bmd');
+    const { bytes } = buildBmdFixture({ version: 12, name: 'obj-fixture' });
+    await import('node:fs/promises').then((fs) => fs.writeFile(source, bytes));
+
+    const rest = await exportObj(source, path.join(dir, 'rest.obj'));
+    assert.equal(rest.meshes, 1);
+    assert.equal(rest.vertices, 7, 'a 3-corner plus a 4-corner triangle');
+    assert.equal(rest.faces, 2);
+    assert.equal(rest.bones, 3);
+    assert.equal(rest.actions, 1);
+    assert.equal(rest.skinned, false);
+
+    const text = await readFile(rest.output, 'utf8');
+    assert.match(text, /^# MU-REENGINEER mu-cli export-obj/);
+    assert.match(text, /# model: obj-fixture \(BMD version 12\)/);
+    assert.match(text, /# pose: as stored \(no skinning\)/);
+    assert.match(text, /^g mesh_0$/m);
+    assert.match(text, /^v 1 0 1$/m, 'the fixture vertex is written verbatim');
+    assert.match(text, /^f 1 2 3$/m);
+    assert.equal(text.split('\n').filter((line) => line.startsWith('v ')).length, 7);
+    assert.equal(text.split('\n').filter((line) => line.startsWith('f ')).length, 2);
+
+    // the same input must produce byte-identical output (no -0, no float noise)
+    const again = await exportObj(source, path.join(dir, 'rest2.obj'));
+    assert.equal(again.bytes, rest.bytes);
+    assert.equal(await readFile(again.output, 'utf8'), text);
+
+    // skinned at key 2 of action 0: the root bone is at y = 0.2, rotated 1 rad around Y
+    const posed = await exportObj(source, path.join(dir, 'posed.obj'), { action: 0, key: 2 });
+    assert.equal(posed.skinned, true);
+    const posedText = await readFile(posed.output, 'utf8');
+    assert.match(posedText, /# pose: action 0 at key 2 \(CPU skinning, 3 keys\)/);
+    assert.notEqual(posedText, text);
+    const firstVertex = posedText.split('\n').find((line) => line.startsWith('v '))!;
+    const [x, y, z] = firstVertex.slice(2).split(' ').map(Number) as [number, number, number];
+    assert.ok(Math.abs(y - 0.2) < 1e-5, `skinned y should follow the root bone (got ${y})`);
+    assert.ok(Math.abs(x - (Math.cos(1) + Math.sin(1))) < 1e-4, `skinned x rotated (got ${x})`);
+    assert.ok(Math.abs(z - (Math.cos(1) - Math.sin(1))) < 1e-4, `skinned z rotated (got ${z})`);
+
+    await assert.rejects(() => exportObj(source, path.join(dir, 'bad.obj'), { action: 9 }), /action 9 does not exist/);
   });
 });
 
