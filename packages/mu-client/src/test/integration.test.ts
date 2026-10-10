@@ -167,6 +167,63 @@ test('movement is server-authoritative, broadcast to characters in scope, and re
   });
 });
 
+test('leaving the scope box removes the character from the other view, returning adds it back', async () => {
+  await withServer(async (server) => {
+    const walker = await loginSession(server, 'demo');
+    await walker.requestCharacterList();
+    await walker.selectCharacter('DarkKnight');
+    await walker.clientReady();
+
+    const observer = await loginSession(server, 'alt');
+    await observer.requestCharacterList();
+    await observer.selectCharacter('ElfArcher');
+    await observer.clientReady();
+
+    // closing the sockets in a finally block: a failed assertion must not leave the process alive
+    try {
+
+      // 12 steps east take the walker from 125 to 137 — beyond the 10-tile scope box
+      const removed = new Promise<number[]>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('no MapObjectOutOfScope for the walker')), 2000);
+        observer.on('scopeRemoved', (event) => {
+          clearTimeout(timer);
+          resolve(event.objectIds);
+        });
+      });
+      walker.walk(new Array(12).fill(2));
+      assert.deepEqual(await removed, [walker.player.id], 'walking out of range must remove the object');
+
+      const scopeAfter = await observer.scopeSnapshot();
+      assert.equal(scopeAfter.some((entry) => entry.name === 'DarkKnight'), false);
+
+      // walking back into range must add it again, with the new position. The walker's session tracks
+      // the predicted position, so this second request declares the correct source coordinates.
+      assert.equal(walker.player.x, 137, 'the client must predict the same position the server computed');
+      const added = new Promise<{ name: string; currentX: number }[]>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('no AddCharactersToScope after returning')), 2000);
+        observer.on('scope', (characters) => {
+          const reAdded = characters.filter((entry) => entry.name === 'DarkKnight');
+          if (reAdded.length > 0) {
+            clearTimeout(timer);
+            resolve(reAdded);
+          }
+        });
+      });
+      const back = walker.walk(new Array(12).fill(6));
+      assert.equal(back.ok, true);
+      assert.equal(back.x, 125);
+      const readded = await added;
+      assert.equal(readded.length, 1);
+      assert.equal(readded[0]!.currentX, 125, 'the re-added entry must carry the current position');
+
+      assert.ok(server.metrics.game.scopeRemovals >= 1);
+    } finally {
+      walker.close();
+      observer.close();
+    }
+  });
+});
+
 test('ping is answered and disconnecting removes the character from the world', async () => {
   await withServer(async (server) => {
     const session = await loginSession(server, 'demo');

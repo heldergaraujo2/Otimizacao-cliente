@@ -39,13 +39,16 @@ them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence r
 
 Target: process-level run (server process + headless client process) covering startup, connection,
 authentication, session flow, movement, disconnect/reconnect.
-**State: CONCLUÍDO COM EVIDÊNCIAS** — beyond the in-test sockets, the real process chain was run
-manually and through an automated test: `mu-server` + `tools/mu-gateway` as **separate processes**, a
-client over the **WebSocket** transport (the browser path) performing login → character list →
-selection → scope → movement → ping → disconnect cleanup (`tools/mu-gateway/src/test/gateway.test.ts`,
-3/3), plus a live `vite` dev server proxying `/ws` to the gateway (`curl` 200 for the page, session flow
-driven through `ws://127.0.0.1:5173/ws`). Still missing: reconnect after an unexpected drop and a
-long-running (hours) session check.
+**State: CONCLUÍDO COM EVIDÊNCIAS** — the server now has a standalone process
+(`packages/mu-server/src/main.ts`, `npm run server`) and
+`packages/mu-client/src/test/level4-process.test.ts` (2 tests) spawns it as a **separate OS process**,
+reads its ports from the JSON status line, runs the whole session over TCP (connect-server handshake →
+login → character list → selection → scope → walk → ping) with zero framing/decrypt/encrypt errors, and
+requires exit code 0 after SIGTERM plus the shutdown log; a busy port must fail fast with exit code 1.
+Additionally, the WebSocket path is covered as its own process chain (`mu-server` + `tools/mu-gateway`,
+`tools/mu-gateway/src/test/gateway.test.ts`, 3 tests) and was driven live through the Vite dev server
+(`/ws` proxy). Still missing: reconnect after an unexpected drop and a long-running (hours) session
+check.
 
 ## Level 5 — visual and resources
 

@@ -7,6 +7,7 @@
  */
 
 export * from './mu/constants.js';
+export * from './mu/movement.js';
 export * from './codec.js';
 export * from './crypto/xor.js';
 export * from './crypto/simplemodulus.js';

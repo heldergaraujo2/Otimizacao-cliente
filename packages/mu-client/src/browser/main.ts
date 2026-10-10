@@ -25,27 +25,15 @@ import {
   parseObj,
 } from '@mu-reengineer/formats';
 
+import { DIRECTION_OFFSETS } from '@mu-reengineer/protocol';
+
 import { ClientSession } from '../core/session.js';
 import { connectWebSocketTransport } from './transport.js';
 import { MuRenderer } from './renderer.js';
 import { fetchAssetIndex, fetchModel, fetchTerrain } from './resources.js';
 
-/**
- * Direction numbering used for input mapping. The server owns the authoritative table
- * (`packages/mu-server/src/world.ts`); this is the client's copy of the same convention:
- * 0 = north, 1 = north-east, 2 = east, 3 = south-east, 4 = south, 5 = south-west, 6 = west,
- * 7 = north-west.
- */
-const DIRECTION_OFFSETS: readonly (readonly [number, number])[] = [
-  [0, -1],
-  [1, -1],
-  [1, 0],
-  [1, 1],
-  [0, 1],
-  [-1, 1],
-  [-1, 0],
-  [-1, -1],
-] as const;
+// The direction table comes from the protocol package — the same one the server validates with, so
+// input mapping, prediction and authority can never disagree (0 = north … 7 = north-west).
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 const hud = document.querySelector<HTMLPreElement>('#hud')!;
@@ -148,7 +136,11 @@ async function start(username: string, password: string): Promise<void> {
   log(`connecting to ${serverUrl} …`);
   const transport = await connectWebSocketTransport({ url: serverUrl });
   session = ClientSession.attach(transport, { xor32: true, log: (message) => console.debug('[protocol]', message) });
-  session.on('serverMessage', (message) => log(`server: ${message.message}`));
+  session.on('serverMessage', (message) => {
+    log(`server: ${message.message}`);
+    // a rejected prediction means we drifted: ask for the authoritative view and adopt it
+    if (message.message.includes('movement rejected')) session?.requestScopeRefresh();
+  });
   session.on('scope', (characters) => {
     for (const character of characters) {
       renderer.addCharacter(character.id, character.name, character.currentX, character.currentY);
@@ -216,10 +208,11 @@ function pumpInput(): void {
   if (direction < 0) return;
   lastWalkAt = now;
 
-  // local prediction: move immediately; the server confirms through the ObjectWalked broadcast
+  // Local prediction happens inside the session (one shared movement implementation); the renderer
+  // just follows the predicted position, and the scope refresh reconciles it with the server.
+  const outcome = session.walk([direction]);
   const view = renderer.getCharacter(selfId ?? -1);
-  if (view) renderer.setTarget(view.id, view.targetX + dx, view.targetY + dy);
-  session.walk([direction]);
+  if (view && outcome.ok) renderer.setTarget(view.id, outcome.x, outcome.y);
 }
 
 function pumpPing(): void {

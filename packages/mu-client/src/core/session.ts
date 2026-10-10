@@ -11,6 +11,7 @@ import {
   buildPing,
   buildRequestCharacterList,
   buildSelectCharacter,
+  applyWalk,
   buildWalkRequest,
   GAME_CODE,
   MuConnection,
@@ -29,6 +30,7 @@ import {
   type CharacterInformation,
   type CharacterListEntry,
   type ScopeCharacter,
+  type WalkOutcome,
 } from '@mu-reengineer/protocol';
 
 import type { MuTransport } from '@mu-reengineer/protocol';
@@ -79,6 +81,7 @@ export class ClientSession {
   private readonly queue: Uint8Array[] = [];
   private readonly waiters: { predicate: (packet: Uint8Array) => boolean; resolve: (packet: Uint8Array) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }[] = [];
   private readonly handlers = new Map<keyof SessionEvents, Set<Handler<never>>>();
+  private readonly scope = new Map<number, ScopeCharacter>();
   private readonly defaultTimeoutMs: number;
   private closedError?: Error;
 
@@ -184,9 +187,21 @@ export class ClientSession {
     return { information, map };
   }
 
+  /**
+   * Asks the server to re-send the current view (C1 F3 12).
+   *
+   * Used both as "client finished loading" and as the recovery step after a rejected prediction: the
+   * scope packets contain the server's authoritative position for our own character, which
+   * {@link resyncPosition} adopts.
+   */
+  requestScopeRefresh(): void {
+    this.connection.send(buildClientReadyAfterMapChange());
+  }
+
   /** Tells the server we finished loading the map and waits for the first scope packets. */
   async clientReady(quietMs = 120): Promise<ScopeCharacter[]> {
-    this.connection.send(buildClientReadyAfterMapChange());
+    this.scope.clear();
+    this.requestScopeRefresh();
     const scope: ScopeCharacter[] = [];
     for (;;) {
       const packet = await this.waitFor((candidate) => {
@@ -201,11 +216,41 @@ export class ClientSession {
     return scope;
   }
 
-  /** Sends a walk request; the server answers with an ObjectWalked broadcast to the neighbours. */
-  walk(directions: number[], override?: { x: number; y: number }): void {
-    const sourceX = override?.x ?? this.player.x;
-    const sourceY = override?.y ?? this.player.y;
+  /**
+   * Sends a walk request, predicting the move locally.
+   *
+   * The prediction is what makes the client playable: the local model is moved immediately (the
+   * renderer can follow without waiting for the network) and the *next* walk declares that predicted
+   * position, which is also what the server validates against. The server's `ObjectWalked` broadcast
+   * keeps every other character in sync, and a rejection (`serverMessage` starting with
+   * "movement rejected") means the prediction was wrong — {@link resyncPosition} then takes the
+   * server's word through the next authoritative state.
+   */
+  walk(directions: number[], options: { x?: number; y?: number; predict?: boolean } = {}): WalkOutcome {
+    const sourceX = options.x ?? this.player.x;
+    const sourceY = options.y ?? this.player.y;
     this.connection.send(buildWalkRequest(sourceX, sourceY, this.player.rotation, directions));
+
+    if (options.predict === false) {
+      return { ok: true, x: sourceX, y: sourceY, rotation: this.player.rotation, steps: directions.length };
+    }
+    const predicted = applyWalk(sourceX, sourceY, this.player.rotation, directions);
+    if (predicted.ok) {
+      this.player.x = predicted.x;
+      this.player.y = predicted.y;
+      this.player.rotation = predicted.rotation;
+    }
+    return predicted;
+  }
+
+  /**
+   * Adopts an authoritative position (for example from a `MapChanged` packet or after a rejected
+   * prediction). Keeps the local model honest instead of letting prediction drift forever.
+   */
+  resyncPosition(x: number, y: number, rotation = this.player.rotation): void {
+    this.player.x = x;
+    this.player.y = y;
+    this.player.rotation = rotation;
   }
 
   async ping(): Promise<{ tickCount: number; attackSpeed: number }> {
@@ -235,6 +280,20 @@ export class ClientSession {
     });
   }
 
+  /**
+   * Currently visible characters, as tracked from the scope packets.
+   *
+   * Kept by the session (not by the renderer) so tests, tools and the renderer share one source of
+   * truth: additions come from `AddCharactersToScope`, removals from `MapObjectOutOfScope`.
+   */
+  scopeSnapshot(): ScopeCharacter[] {
+    return [...this.scope.values()];
+  }
+
+  get scopeSize(): number {
+    return this.scope.size;
+  }
+
   // ------------------------------------------------------------------ events
 
   private dispatch(packet: Uint8Array): void {
@@ -252,11 +311,21 @@ export class ClientSession {
 
     const header = readPacketHeader(packet);
     if (header.code === GAME_CODE.ScopeCharacters) {
-      this.emit('scope', parseAddCharactersToScope(packet).characters);
+      const characters = parseAddCharactersToScope(packet).characters;
+      for (const character of characters) {
+        this.scope.set(character.id, character);
+        // the server's own entry for us is authoritative: adopt its position (reconciliation)
+        if (this.player.id !== undefined && character.id === this.player.id) {
+          this.resyncPosition(character.currentX, character.currentY, character.rotation);
+        }
+      }
+      this.emit('scope', characters);
       return;
     }
     if (header.code === GAME_CODE.MapObjectOutOfScope) {
-      this.emit('scopeRemoved', parseMapObjectOutOfScope(packet));
+      const { objectIds } = parseMapObjectOutOfScope(packet);
+      for (const objectId of objectIds) this.scope.delete(objectId);
+      this.emit('scopeRemoved', { objectIds });
       return;
     }
     if (header.code === GAME_CODE.ObjectWalked) {

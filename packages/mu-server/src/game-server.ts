@@ -110,26 +110,26 @@ export class GameServer {
     return [...this.sessions].filter((session) => session.state === 'in-game');
   }
 
-  /** Tells every session which can see `character` that it left their view. */
-  broadcastOutOfScope(character: WorldCharacter): void {
-    const packet = buildMapObjectOutOfScope([character.id]);
+  /**
+   * Brings every in-game session's view in sync with the world.
+   *
+   * Each session remembers which objects it knows about (`known`), so this single pass covers every
+   * case — somebody arrived, somebody walked out of the box, somebody walked into it, somebody
+   * disconnected — by diffing the desired view (`World.inScope`) against the remembered one and
+   * sending exactly the missing pieces: one `AddCharactersToScope` per batch of newcomers and one
+   * `MapObjectOutOfScope` for the objects which left. Objects already known are never re-sent, which
+   * keeps the traffic proportional to actual changes.
+   */
+  syncScopes(): void {
     for (const session of this.inGameSessions()) {
-      if (session.character?.id === character.id) continue;
-      if (session.character && session.canSee(character)) {
-        session.send(packet);
-        this.metrics.scopeRemovals += 1;
-      }
+      session.syncView();
     }
   }
 
-  broadcastScope(character: WorldCharacter, exceptId?: number): void {
-    for (const session of this.inGameSessions()) {
-      if (session.character?.id === exceptId) continue;
-      if (session.character && session.canSee(character)) {
-        session.send(buildAddCharactersToScope([toScopeCharacter(character)]));
-        this.metrics.scopePackets += 1;
-      }
-    }
+  /** Sends the current view to a session from scratch (used by the explicit scope refresh request). */
+  resendScope(session: GameServerSession): void {
+    session.forgetView();
+    session.syncView();
   }
 
 }
@@ -139,6 +139,8 @@ export class GameServerSession {
   state: SessionState = 'connected';
   character?: WorldCharacter;
   account?: Account;
+  /** Objects this session currently knows about (its view), keyed by object id. */
+  private readonly known = new Map<number, WorldCharacter>();
 
   private readonly connection: MuConnection;
 
@@ -195,13 +197,14 @@ export class GameServerSession {
   private handleClose(): void {
     if (this.state !== 'closed') this.state = 'closed';
     this.server.metrics.disconnects += 1;
-    if (this.character) {
-      // anyone who could see this character must be told, before it disappears from the world
-      this.server.broadcastOutOfScope(this.character);
-      this.server.internals.options.world.remove(this.character.id);
-    }
+    const character = this.character;
+    if (character) this.server.internals.options.world.remove(character.id);
     if (this.account) this.account.connected = false;
     this.server.internals.remove(this);
+    if (character) {
+      // everybody who had this character in view gets a MapObjectOutOfScope from the diff
+      this.server.syncScopes();
+    }
   }
 
   private handlePacket(packet: Uint8Array): void {
@@ -256,8 +259,8 @@ export class GameServerSession {
     }
 
     if (header.code === GAME_CODE.ScopeCharacters && header.subCode === undefined && this.state === 'in-game') {
-      // Some clients request a scope refresh after loading: answer with the current view.
-      this.sendScope();
+      // Some clients request a scope refresh after loading: answer with the whole current view.
+      this.server.resendScope(this);
       return;
     }
 
@@ -344,22 +347,50 @@ export class GameServerSession {
 
   private enterGame(): void {
     this.state = 'in-game';
-    this.sendScope();
-    // tell the neighbours that somebody arrived
-    this.server.broadcastScope(this.character!, this.character!.id);
+    // an empty view means the first sync sends everything in range (the character itself included)
+    this.known.clear();
+    this.server.syncScopes();
   }
 
-  private sendScope(): void {
+  /** Drops the remembered view, so the next sync re-sends everything in range. */
+  forgetView(): void {
+    this.known.clear();
+  }
+
+  /**
+   * Diffs the world against the remembered view and sends the additions/removals. Called for every
+   * in-game session after anything that can change visibility.
+   */
+  syncView(): void {
     const character = this.character;
-    if (!character) return;
-    const neighbours = this.server.internals.options.world.inScope(character.id);
-    const scope: WorldCharacter[] = [character, ...neighbours];
-    // One packet per character keeps the variable-length encoding simple and matches how the client
-    // consumes it (a list of entries would also be valid).
-    for (const entry of scope) {
-      this.send(buildAddCharactersToScope([toScopeCharacter(entry)]));
-      this.server.metrics.scopePackets += 1;
+    if (!character || this.state !== 'in-game') return;
+
+    const world = this.server.internals.options.world;
+    const desired = new Map<number, WorldCharacter>();
+    desired.set(character.id, character);
+    for (const other of world.inScope(character.id)) desired.set(other.id, other);
+
+    const added: WorldCharacter[] = [];
+    for (const [id, other] of desired) {
+      if (!this.known.has(id)) added.push(other);
     }
+    const removed: number[] = [];
+    for (const id of this.known.keys()) {
+      if (!desired.has(id)) removed.push(id);
+    }
+
+    if (added.length > 0) {
+      // one packet may carry several entries: the reference encodes a count plus 36-byte records
+      this.send(buildAddCharactersToScope(added.map(toScopeCharacter)));
+      this.server.metrics.scopePackets += added.length;
+    }
+    if (removed.length > 0) {
+      this.send(buildMapObjectOutOfScope(removed));
+      this.server.metrics.scopeRemovals += removed.length;
+    }
+
+    this.known.clear();
+    for (const [id, other] of desired) this.known.set(id, other);
   }
 
   private handleWalk(packet: Uint8Array): void {
@@ -381,6 +412,9 @@ export class GameServerSession {
       if (session.character?.id === character.id) continue; // the walker already predicted its own move
       if (session.canSee(character)) session.send(objectWalked);
     }
+
+    // the move can have changed who sees whom in both directions
+    this.server.syncScopes();
   }
 }
 

@@ -99,6 +99,38 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 - **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
   are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
 
+### View synchronisation + standalone server process — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+- **Scope synchroniser** (`mu-server/src/game-server.ts`): each session remembers its view; after any
+  visibility change the server diffs it against `World.inScope` and sends only additions
+  (`AddCharactersToScope`) and removals (`MapObjectOutOfScope`). Entering, walking into/out of range and
+  disconnecting are all covered by the same pass.
+- **Shared movement model** (`mu-protocol/src/mu/movement.ts`): `applyWalk` is used by the client for
+  prediction *and* by the server for validation, so the two can no longer disagree; it is exported from
+  the protocol barrel and re-exported by `mu-server/src/world.ts`.
+- **Client prediction and reconciliation**: `ClientSession.walk()` returns the predicted outcome, the
+  session tracks the predicted position, adopts the server's authoritative entry from scope packets and
+  can ask for a refresh (`requestScopeRefresh`) after a rejection.
+- **Standalone server process** (`mu-server/src/main.ts`, `npm run server`): CLI flags, JSON status line
+  (`{"event":"listening","host":…,"connectPort":…,"gamePort":…}`), SIGINT/SIGTERM shutdown, fail-fast on
+  a busy port.
+
+Evidence:
+
+```bash
+npm run build                       # clean
+npm test                            # 103/103 (protocol 42 · formats 22 · client 15 · server 9 · cli 8 · gateway 7)
+
+# the CLI by hand
+node packages/mu-server/dist/main.js --help
+node packages/mu-server/dist/main.js --status-json --no-demo-accounts
+#   -> {"event":"listening","host":"0.0.0.0","connectPort":39183,"gamePort":43765}
+#   -> [server] ready — connect 0.0.0.0:39183, game 0.0.0.0:43765 (xor32=true, demo accounts=no)
+
+# Level 4 automated (separate OS process, real TCP, clean shutdown)
+node --test packages/mu-client/dist/test/../dist/test/level4-process.test.js   # 2/2
+```
+
 ### Resource layer + asset route — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
 - `packages/mu-client/src/resources/loader.ts`: case-insensitive path resolution (Windows data trees),

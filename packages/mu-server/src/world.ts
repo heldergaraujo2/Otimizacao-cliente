@@ -4,33 +4,16 @@
  * The server is authoritative: positions only change through {@link World.move}, which validates the
  * step count, the directions and the map bounds. Clients never dictate a final position, they propose
  * a movement and the server decides whether it happened.
+ *
+ * The movement computation itself lives in `@mu-reengineer/protocol` ({@link applyWalk}) so the client
+ * prediction and the server validation cannot drift apart; this module only adds the authoritative
+ * state (who is where, who sees whom).
  */
 
-/**
- * Step offsets for the 8 movement directions.
- *
- * Convention used by this implementation (x grows east, y grows south, "north" is -y):
- *   0 = north (0,-1) · 1 = north-east (1,-1) · 2 = east (1,0) · 3 = south-east (1,1)
- *   4 = south (0,1)  · 5 = south-west (-1,1) · 6 = west (-1,0) · 7 = north-west (-1,-1)
- *
- * IMPORTANT: the numeric mapping is our interpretation of the reference client's walk encoding. It is
- * deterministic and tested here, but must still be validated against the real client (see
- * docs/COMPATIBILITY.md "open compatibility questions"). Only the mapping *inside* the server depends
- * on it: bounds/authority checks hold regardless.
- */
-export const DIRECTION_OFFSETS: readonly (readonly [number, number])[] = [
-  [0, -1],
-  [1, -1],
-  [1, 0],
-  [1, 1],
-  [0, 1],
-  [-1, 1],
-  [-1, 0],
-  [-1, -1],
-] as const;
+import { applyWalk, DIRECTION_OFFSETS, MAX_WALK_STEPS, MAP_SIZE } from '@mu-reengineer/protocol';
 
-export const MAP_SIZE = 256;
-export const MAX_WALK_STEPS = 15;
+export { DIRECTION_OFFSETS, MAX_WALK_STEPS, MAP_SIZE };
+
 export const DEFAULT_SCOPE_RANGE = 10;
 
 export interface WorldCharacter {
@@ -116,27 +99,15 @@ export class World {
       return { ok: false, reason: `declared y ${declaredY} != server y ${character.y}`, x: character.x, y: character.y, rotation: character.rotation, steps: 0 };
     }
 
-    let x = character.x;
-    let y = character.y;
-    let rotation = character.rotation;
-    for (const raw of directions) {
-      const direction = raw & 0x7;
-      const offset = DIRECTION_OFFSETS[direction];
-      if (!offset) {
-        return { ok: false, reason: `invalid direction ${raw}`, x, y, rotation, steps: 0 };
-      }
-      x += offset[0];
-      y += offset[1];
-      rotation = direction;
+    // same computation the client uses for prediction — one implementation, two callers
+    const outcome = applyWalk(character.x, character.y, character.rotation, directions);
+    if (!outcome.ok) {
+      return { ok: false, reason: outcome.reason, x: character.x, y: character.y, rotation: character.rotation, steps: 0 };
     }
 
-    if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) {
-      return { ok: false, reason: `movement leaves the map (${x},${y})`, x: character.x, y: character.y, rotation: character.rotation, steps: 0 };
-    }
-
-    character.x = x;
-    character.y = y;
-    character.rotation = rotation;
-    return { ok: true, x, y, rotation, steps: directions.length };
+    character.x = outcome.x;
+    character.y = outcome.y;
+    character.rotation = outcome.rotation;
+    return { ok: true, x: outcome.x, y: outcome.y, rotation: outcome.rotation, steps: outcome.steps };
   }
 }

@@ -6,6 +6,9 @@
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "mu-server": "dist/main.js"
+  },
   "types": "dist/index.d.ts",
   "exports": {
     ".": {

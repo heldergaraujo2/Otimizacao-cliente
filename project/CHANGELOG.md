@@ -2,6 +2,56 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 9: view synchronisation, standalone server process, Level 4
+
+**Changes**
+
+- `packages/mu-server/src/game-server.ts`: the scope logic became a **diff-based view synchroniser**.
+  Each in-game session remembers the objects it knows about; after every event that can change
+  visibility (entering, walking, disconnecting) `syncScopes()` compares the remembered view with
+  `World.inScope` and sends only the differences — one `AddCharactersToScope` for newcomers, one
+  `MapObjectOutOfScope` for objects that left. Objects already known are never re-sent, and the
+  explicit scope-refresh request (`C1 F3 12`) re-sends the whole view. New metrics: `scopeRemovals`
+  (per object).
+- `packages/mu-protocol/src/mu/movement.ts` (new): the movement model moved into the protocol package
+  (`DIRECTION_OFFSETS`, `MAX_WALK_STEPS`, `MAP_SIZE`, `applyWalk`) because it is wire-format knowledge
+  and **both ends must compute it identically**. `mu-server/src/world.ts` now delegates to it, and the
+  browser client imports the same table instead of keeping its own copy.
+- `packages/mu-client`: `ClientSession.walk()` now **predicts locally** with `applyWalk` (so the next
+  walk declares the correct source position) and exposes `resyncPosition`/`scopeSnapshot`/
+  `requestScopeRefresh`. The server's own entry in the scope packets is authoritative and is adopted
+  automatically (reconciliation), and the page asks for a refresh after a rejected prediction.
+- `packages/mu-server/src/main.ts` (new): standalone server process with CLI flags
+  (`--host/--connect-port/--game-port/--advertise-host/--no-xor32/--no-demo-accounts/--status-json`),
+  a machine-readable `{"event":"listening",…}` line, clean SIGINT/SIGTERM shutdown and a fail-fast
+  exit code. `npm run server` and `mu-server` bin entry added.
+- `packages/mu-client/src/test/level4-process.test.ts` (new): **Level 4** — spawns that CLI as a real
+  separate process, reads its ports from the JSON line, performs the whole session over TCP
+  (connect-server → login → character list → selection → scope → walk → ping), then requires exit code
+  0 after SIGTERM and asserts the shutdown log; a second test checks that a busy port fails fast with
+  exit code 1.
+
+**Tests executed**
+
+| Command | Result |
+| --- | --- |
+| `npm run build` | clean (6 workspaces + tools) |
+| `npm test` | protocol 42/42 · formats 22/22 · client 15/15 · server 9/9 · cli 8/8 · gateway 7/7 — **103/103, 0 fail** |
+
+New coverage specifically: movement model (6 tests: 8-way table, step/rotation semantics, high-bit
+tolerance, step-count limits, map bounds, overridable map size), scope leave/return over real sockets
+(12 steps east leave the observer's view with `MapObjectOutOfScope`, 12 steps back re-add the character
+with the position up to date), and the process-level suite above.
+
+**Notes / limitations**
+
+1. `MapObjectOutOfScope` is sent per object; batching several removals in one packet is supported by the
+   builder and exercised by the protocol tests.
+2. Reconciliation stays deliberately simple: prediction + adopt the authoritative entry from a scope
+   refresh. There is no rollback animation and no interpolation yet.
+3. The CLI defaults to port 0 (OS-picked) so tests never collide; a real deployment passes explicit
+   ports (`npm run server -- --connect-port 44405 --game-port 55901`).
+
 ## 2026-10-10 — cycle 7: reference-exact movement encoding, scope removal, preview re-run
 
 **Changes**

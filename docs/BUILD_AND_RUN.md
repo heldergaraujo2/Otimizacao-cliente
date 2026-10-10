@@ -89,6 +89,15 @@ await server.close();
 
 Demo accounts (development only): `demo`/`demo` → character `DarkKnight`, `alt`/`alt` → `ElfArcher`.
 
+Standalone server process (what a deployment runs, and what the Level 4 test spawns):
+
+```bash
+npm run server                                  # OS-picked ports, JSON status line on stdout
+npm run server -- --connect-port 44405 --game-port 55901 --advertise-host 203.0.113.10
+npm run server -- --no-demo-accounts --no-xor32  # experimentation only
+node packages/mu-server/dist/main.js --help      # all flags
+```
+
 Browser renderer (implemented; needs a GPU in the *viewer's* machine):
 
 ```bash
