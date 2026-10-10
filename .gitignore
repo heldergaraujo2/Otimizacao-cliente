@@ -6,8 +6,9 @@ MU-REENGINEER-DATA/
 Data/
 !docs/**/Data/
 
-# Third-party reference checkouts (pinned via scripts/fetch-references.sh)
-third_party/
+# Third-party reference checkouts are ignored; only the pins and its README are committed.
+# (Ignore the directory *contents*, never the directory itself, otherwise git cannot re-include files.)
+third_party/*
 !third_party/README.md
 !third_party/PINS.json
 
