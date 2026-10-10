@@ -217,7 +217,7 @@ test('object walked round trip (server -> client)', () => {
   assert.deepEqual(parsed.directions, [0, 1, 2]);
 });
 
-test('scope packet round trip keeps names and positions', () => {
+test('scope packet uses the reference nibble order (rotation high, hero state low)', () => {
   const packet = buildAddCharactersToScope([
     {
       id: 1001,
@@ -231,6 +231,16 @@ test('scope packet round trip keeps names and positions', () => {
       heroState: 1,
     },
   ]);
+  // entry layout verified against OpenMU's generated CharacterData accessors:
+  //   [4] flags byte at entry offset 34, rotation = high nibble, heroState = low nibble,
+  //   [5] effect count, entries are 36 bytes without effects
+  // C2 header is three bytes (prefix + big-endian size) followed by the code byte, so — exactly like
+  // the reference definitions (CharacterCount at index 4, charactersStartIndex 5) — the count byte is
+  // at index 4 and the first 36-byte character record starts at index 5.
+  assert.equal(packet.length, 3 + 1 + 1 + 36);
+  assert.equal(packet[4], 1); // character count
+  assert.equal(packet[5 + 34], (1 << 4) | 1); // rotation 1 (high nibble), hero state 1 (low)
+
   const parsed = parseAddCharactersToScope(packet);
   assert.equal(parsed.characters.length, 1);
   assert.equal(parsed.characters[0].id, 1001);
@@ -238,6 +248,24 @@ test('scope packet round trip keeps names and positions', () => {
   assert.equal(parsed.characters[0].currentX, 133);
   assert.equal(parsed.characters[0].heroState, 1);
   assert.equal(parsed.characters[0].rotation, 1);
+  // a rotation of 7 and hero state 3 must not be confused with each other
+  const asymmetric = parseAddCharactersToScope(
+    buildAddCharactersToScope([
+      {
+        id: 7,
+        currentX: 1,
+        currentY: 2,
+        appearance: new Uint8Array(18),
+        name: 'X',
+        targetX: 1,
+        targetY: 2,
+        rotation: 7,
+        heroState: 3,
+      },
+    ]),
+  );
+  assert.equal(asymmetric.characters[0]?.rotation, 7);
+  assert.equal(asymmetric.characters[0]?.heroState, 3);
 });
 
 test('server message, logout, ping and ready packets round trip', () => {

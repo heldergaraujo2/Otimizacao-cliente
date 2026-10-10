@@ -10,3 +10,4 @@ export * from './core/connect-client.js';
 export * from './net/socket-transport.js';
 export * from './net/tcp-session.js';
 export * from './browser/transport.js';
+export * from './resources/loader.js';

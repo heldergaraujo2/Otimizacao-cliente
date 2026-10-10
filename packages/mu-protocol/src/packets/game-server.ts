@@ -463,7 +463,7 @@ export interface ScopeCharacter {
 
 /** C2 12 (AddCharactersToScope): [4] count, then variable-length entries. */
 export function buildAddCharactersToScope(characters: ScopeCharacter[]): Uint8Array {
-  const writer = new ByteWriter(16 + characters.length * 37);
+  const writer = new ByteWriter(6 + characters.length * 36);
   writer.u8(characters.length);
   for (const character of characters) {
     writer.u16be(character.id);
@@ -475,7 +475,10 @@ export function buildAddCharactersToScope(characters: ScopeCharacter[]): Uint8Ar
     writer.ascii(character.name, 10);
     writer.u8(character.targetX);
     writer.u8(character.targetY);
-    writer.u8(((character.heroState & 0x0f) << 4) | (character.rotation & 0x0f));
+    // Reference layout (MUnique.OpenMU Network/Packets/ServerToClient, CharacterData):
+    //   rotation = GetByteValue(4, 4) -> high nibble, heroState = GetByteValue(4, 0) -> low nibble,
+    //   followed by the effect count and one effect record per effect.
+    writer.u8(((character.rotation & 0x0f) << 4) | (character.heroState & 0x0f));
     writer.u8(0); // effect count
   }
   return createPacket(0xc2, GAME_CODE.ScopeCharacters, undefined, writer.toUint8Array());
@@ -495,9 +498,10 @@ export function parseAddCharactersToScope(packet: Uint8Array): { characters: Sco
     const name = reader.ascii(10);
     const targetX = reader.u8();
     const targetY = reader.u8();
+    // see buildAddCharactersToScope: rotation is the high nibble, hero state the low one
     const flags = reader.u8();
-    const heroState = flags >> 4;
-    const rotation = flags & 0x0f;
+    const rotation = (flags >> 4) & 0x0f;
+    const heroState = flags & 0x0f;
     const effectCount = reader.u8();
     for (let e = 0; e < effectCount; e++) reader.u8();
     characters.push({ id, currentX, currentY, appearance, name, targetX, targetY, rotation, heroState });

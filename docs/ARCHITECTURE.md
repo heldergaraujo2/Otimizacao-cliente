@@ -89,6 +89,13 @@ Design notes:
   per-connection (proved by the "two clients are independent" test).
 - Movement is predicted locally and confirmed by the server's `ObjectWalked` broadcast (reconciliation
   is the next step).
+- Resources: the node side uses `packages/mu-client/src/resources/loader.ts` (case-insensitive
+  resolution for Windows data trees, cache keyed by resolved path + size + mtime, close-candidate hints
+  on 404). The browser reaches the same data through the gateway's `/assets/` route, which resolves
+  through that loader and streams the file — so the page renders real ATT/MAP/OBJ/BMD files when
+  `--data-dir`/`MU_REENGINEER_DATA` is set, and the deterministic `mu-formats` fixtures otherwise.
+  `scripts/make-demo-data.mjs` writes a synthetic data directory in the classic server layout for a dry
+  run.
 
 ## 5. Server (implemented — see §3 above)
 

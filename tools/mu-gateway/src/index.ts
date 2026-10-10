@@ -15,14 +15,19 @@
 import { createServer as createHttpServer } from 'node:http';
 import { connect as connectTcp } from 'node:net';
 
+import { ResourceLoader } from '@mu-reengineer/client';
 import { startMuServer } from '@mu-reengineer/server';
 import { WebSocketServer, type WebSocket } from 'ws';
+
+import { handleAssetRequest } from './assets.js';
 
 export interface GatewayOptions {
   wsPort: number;
   host?: string;
   gameHost: string;
   gamePort: number;
+  /** Enables `GET /assets/*` over this directory (the browser client needs it for real data). */
+  dataDir?: string;
   log?: (message: string) => void;
 }
 
@@ -37,14 +42,32 @@ export async function startGateway(options: GatewayOptions): Promise<GatewayHand
   const log = options.log ?? (() => {});
   let connections = 0;
 
+  const assetLoader = options.dataDir ? new ResourceLoader({ root: options.dataDir, log }) : undefined;
+  const assetStats = { served: 0, bytes: 0 };
   const http = createHttpServer((request, response) => {
-    if (request.url === '/health') {
-      response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({ ok: true, game: `${options.gameHost}:${options.gamePort}`, connections }));
-      return;
-    }
-    response.writeHead(404, { 'content-type': 'text/plain' });
-    response.end('mu-gateway: use /ws for the protocol bridge, /health for status\n');
+    void (async () => {
+      if (request.url === '/health') {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(
+          JSON.stringify({
+            ok: true,
+            game: `${options.gameHost}:${options.gamePort}`,
+            connections,
+            dataDir: options.dataDir ?? null,
+            assets: assetLoader ? assetLoader.stats : null,
+            assetsServed: assetStats.served,
+            assetBytesServed: assetStats.bytes,
+          }),
+        );
+        return;
+      }
+      if (assetLoader && (await handleAssetRequest(request, response, { loader: assetLoader, stats: assetStats, log }))) return;
+      response.writeHead(404, { 'content-type': 'text/plain' });
+      response.end('mu-gateway: use /ws for the protocol bridge, /health for status, /assets/ for data\n');
+    })().catch((error: unknown) => {
+      response.writeHead(500, { 'content-type': 'text/plain' });
+      response.end(`internal error: ${(error as Error).message}`);
+    });
   });
 
   const wss = new WebSocketServer({ server: http, path: '/ws' });
@@ -126,7 +149,8 @@ async function main(argv: string[]): Promise<number> {
         '  --game-host <addr>    TCP game server host (default 127.0.0.1)\n' +
         '  --game-port <port>    TCP game server port\n' +
         '  --server              start the bundled mu-server and bridge to it\n' +
-        '  --xor32               with --server: expect the XOR32 profile (default true)\n',
+        '  --data-dir <path>     serve this MU data directory on /assets/ (for the browser client)\n' +
+        '  --xor32 <bool>        with --server: expect the XOR32 profile (default true)\n',
     );
     return 0;
   }
@@ -150,7 +174,14 @@ async function main(argv: string[]): Promise<number> {
     return 2;
   }
 
-  const gateway = await startGateway({ wsPort, gameHost, gamePort, log: (message) => console.log(`[gateway] ${message}`) });
+  const dataDir = typeof flags['data-dir'] === 'string' ? flags['data-dir'] : process.env.MU_REENGINEER_DATA;
+  const gateway = await startGateway({
+    wsPort,
+    gameHost,
+    gamePort,
+    dataDir,
+    log: (message) => console.log(`[gateway] ${message}`),
+  });
   console.log(`[gateway] ready: ws://localhost:${gateway.wsPort}/ws -> http://${gameHost}:${gamePort}`);
 
   const shutdown = async (): Promise<void> => {

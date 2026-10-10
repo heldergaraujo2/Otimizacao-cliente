@@ -21,6 +21,15 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      // real game data (when the gateway was started with --data-dir / MU_REENGINEER_DATA)
+      '/assets': {
+        target: 'http://127.0.0.1:7788',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://127.0.0.1:7788',
+        changeOrigin: true,
+      },
     },
   },
   build: {
