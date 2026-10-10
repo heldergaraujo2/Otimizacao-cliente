@@ -2,6 +2,48 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 12: monsters that wander (server tick + broadcast)
+
+**Changes**
+
+- `packages/mu-server/src/npc.ts` (new): `wanderNpcs(world, rng, options)` — per monster an idle roll,
+  a step count (1..`maxSteps`, default 3) and a direction are drawn from an **injected** random source,
+  and the movement goes through `World.move`, so a monster is subject to exactly the same validation as a
+  player (step-count limit, direction mask, map bounds) and its packets are shaped identically. A
+  monster pressed against the border retries with fresh directions and turns around or idles — it never
+  walks off the map. Returns `NpcStep[]` (`{npc, directions, x, y, rotation, idle}`).
+- `GameServer.tickNpcs(rng?)`: runs one wander step and broadcasts one `ObjectWalked` per moving monster,
+  but only to the sessions that can `canSee()` it (the scope check runs before serialisation); then the
+  usual `syncScopes()` pass. New metrics `npcTicks` (ticks that moved something) and `npcSteps` (walks
+  broadcast). `startNpcTicker(intervalMs, rng?)` drives it periodically and is stopped by `close()`.
+- `startMuServer` gained `npcTickMs` (default **800 ms**) and `npcRandom`, and now exposes the
+  `GameServer` as `server.game` so callers can drive ticks by hand (the tests do). The standalone CLI
+  gained `--npc-tick <ms>` (0 = still world).
+- `packages/mu-client`: `ObjectWalked` for an object we track now updates the remembered view as well
+  (scope entry and monster entry), so `scopeSnapshot()`/`npcSnapshot()` stay truthful instead of pinned
+  to the packet that introduced the object. The page already moves and interpolates every object through
+  `renderer.setTarget`, so monsters animate with no renderer change.
+
+**Evidence**
+
+- `npm test` → **125 tests, 0 failures**: protocol 43, formats 33, client 17, server 16, cli 9, gateway 7.
+- New tests: 5 wander tests in `packages/mu-server/src/test/npc.test.ts` (straight walk with a pinned
+  random sequence, idle, border turn-around with no negative coordinates, players untouched, identity and
+  type number kept) and an integration test that drives two ticks with `server.game.tickNpcs(() => 0.5)`
+  and asserts: 5 monsters walked, each `ObjectWalked` is two steps south from the row the client knew,
+  the second tick continues from there, `npcTicks`/`npcSteps` match, the world agrees, the periodic
+  `startNpcTicker` keeps ticking, and `npcSnapshot()` follows the broadcasts.
+- Measurement (median of 3 runs, see `docs/PERFORMANCE.md`): 5 monsters + 1 session → 0.012 ms/tick
+  (81 604 ticks/s); 200 monsters + 1 session → 0.082 ms/tick (12 218 ticks/s) with 9.45 broadcasts per
+  tick — cost scales with *visible* monsters, not population.
+
+**Limitations**
+
+- The wander is not MU's monster AI: no aggression, no pathing around obstacles (the ATT walkability
+  flags are not consulted), no respawn. It exists to make the world move through a validated,
+  testable path and to exercise client-side interpolation of non-player objects.
+- Monsters are still placeholders visually (coloured capsules) — no monster art exists in the repo.
+
 ## 2026-10-10 — cycle 11: monsters/NPCs in the world and in the client's view
 
 **Changes**

@@ -95,6 +95,13 @@ Design notes:
   removal are one code path; only the packet differs: `AddNpcsToScope` (C2 13, 10-byte records) instead
   of `AddCharactersToScope` (C2 12, 36-byte records). Both are diffed by `syncScopes()`, and scope
   removals always travel in `MapObjectOutOfScope` (C1 14) regardless of what was removed.
+- Monster behaviour lives in `mu-server/src/npc.ts`: `wanderNpcs(world, rng)` picks an idle roll, a step
+  count and a direction per monster and moves it **through `World.move`**, so a monster obeys exactly the
+  rules a player does (bounds, step limit) and its packets are shaped identically — a blocked monster
+  turns around, it never walks off the map. `GameServer.tickNpcs()` broadcasts one `ObjectWalked` per
+  moving monster to the sessions that can see it and then runs the usual scope diff; `startNpcTicker`
+  drives it periodically (server option `npcTickMs`, CLI `--npc-tick`, `0` = still world). Randomness is
+  injected, which is what makes the behaviour testable.
 - Characters are animated with the BMD skeleton: the renderer builds three.js bones from the model's
   bone list, binds the mesh with **identity** bind matrices (vertices are stored in bone space) and,
   every frame, samples the clip through `mu-formats` (`computeBoneWorldMatrices`) to drive both the

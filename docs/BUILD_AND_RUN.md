@@ -88,6 +88,11 @@ await server.close();
 ```
 
 Demo accounts (development only): `demo`/`demo` → character `DarkKnight`, `alt`/`alt` → `ElfArcher`.
+The world starts with five monsters/NPCs around the spawn point and they wander once per integer
+interval — `startMuServer({ npcTickMs: 800 })` (default), `npcTickMs: 0` for a still world,
+`npcSpawns: […]` / `withDemoNpcs: false` to change or drop them, and `server.game.tickNpcs(rng)` to drive
+a tick by hand (that is what the tests do). Every monster walk is broadcast through the same
+`ObjectWalked` packet a player's walk uses, only to sessions that can see the monster.
 
 Standalone server process (what a deployment runs, and what the Level 4 test spawns):
 
@@ -95,6 +100,7 @@ Standalone server process (what a deployment runs, and what the Level 4 test spa
 npm run server                                  # OS-picked ports, JSON status line on stdout
 npm run server -- --connect-port 44405 --game-port 55901 --advertise-host 203.0.113.10
 npm run server -- --no-demo-accounts --no-xor32  # experimentation only
+npm run server -- --npc-tick 300                 # monsters wander every 300 ms (0 = still)
 node packages/mu-server/dist/main.js --help      # all flags
 ```
 

@@ -45,6 +45,7 @@ import {
 
 import type { Account, AccountStore, StoredCharacter } from './accounts.js';
 import { createSocketTransport } from './net/socket-transport.js';
+import { wanderNpcs, type NpcStep, type RandomFn } from './npc.js';
 import { isNpc, type World, type WorldCharacter } from './world.js';
 
 export type SessionState = 'connected' | 'authenticated' | 'character-selected' | 'in-game' | 'closed';
@@ -68,6 +69,10 @@ export interface GameServerMetrics {
   scopeRemovals: number;
   unsupportedPackets: number;
   disconnects: number;
+  /** Monster ticks that actually moved something. */
+  npcTicks: number;
+  /** Monster walks broadcast (one per moving monster per tick). */
+  npcSteps: number;
 }
 
 export class GameServer {
@@ -82,6 +87,8 @@ export class GameServer {
     scopeRemovals: 0,
     unsupportedPackets: 0,
     disconnects: 0,
+    npcTicks: 0,
+    npcSteps: 0,
   };
 
   private readonly sessions = new Set<GameServerSession>();
@@ -99,7 +106,12 @@ export class GameServer {
     };
   }
 
+  /** True once the sockets are attached; the NPC ticker refuses to run before that. */
+  running = false;
+  private npcTimer?: ReturnType<typeof setInterval>;
+
   attach(server: Server): void {
+    this.running = true;
     server.on('connection', (socket) => {
       this.metrics.connections += 1;
       const session = new GameServerSession(socket, this);
@@ -132,6 +144,54 @@ export class GameServer {
   resendScope(session: GameServerSession): void {
     session.forgetView();
     session.syncView();
+  }
+
+  /**
+   * One monster tick: every monster/NPC takes a small wander step and every session that can see it
+   * receives the same `ObjectWalked` packet a player's walk produces. Returns the steps taken, so the
+   * caller (the tests, mostly) can assert what happened without guessing.
+   */
+  tickNpcs(rng?: RandomFn): NpcStep[] {
+    if (!this.running) return [];
+    const steps = wanderNpcs(this.internals.options.world, rng);
+    let moved = 0;
+
+    for (const step of steps) {
+      if (step.idle) continue;
+      moved += 1;
+      const packet = buildObjectWalked(step.npc.id, step.x, step.y, step.rotation, step.directions);
+      for (const session of this.inGameSessions()) {
+        if (session.canSee(step.npc)) session.send(packet);
+      }
+    }
+
+    if (moved > 0) {
+      this.metrics.npcTicks += 1;
+      this.metrics.npcSteps += moved;
+      this.syncScopes();
+    }
+    return steps;
+  }
+
+  /** Starts the periodic monster ticker (`intervalMs <= 0` disables it). */
+  startNpcTicker(intervalMs: number, rng?: RandomFn): void {
+    this.stopNpcTicker();
+    if (intervalMs <= 0) return;
+    this.npcTimer = setInterval(() => {
+      try {
+        this.tickNpcs(rng);
+      } catch (error) {
+        this.internals.options.log?.(`game: npc tick failed: ${(error as Error).message}`);
+      }
+    }, intervalMs);
+    this.npcTimer.unref?.();
+  }
+
+  stopNpcTicker(): void {
+    if (this.npcTimer) {
+      clearInterval(this.npcTimer);
+      this.npcTimer = undefined;
+    }
   }
 
 }

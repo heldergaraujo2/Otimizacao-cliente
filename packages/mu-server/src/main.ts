@@ -25,6 +25,7 @@ export interface ServerCliOptions {
   xor32: boolean;
   withDemoAccounts: boolean;
   withDemoNpcs: boolean;
+  npcTickMs: number;
   statusJson: boolean;
 }
 
@@ -59,6 +60,7 @@ export function parseServerArgs(argv: string[]): ServerCliOptions {
     xor32: flags.get('no-xor32') === undefined,
     withDemoAccounts: flags.get('no-demo-accounts') === undefined,
     withDemoNpcs: flags.get('no-npcs') === undefined,
+    npcTickMs: Number(flags.get('npc-tick') ?? 800),
     statusJson: flags.get('status-json') !== undefined,
   };
 }
@@ -75,6 +77,7 @@ export function serverUsage(): string {
     '  --no-xor32               do not apply the XOR32 stream mask on the game connection',
     '  --no-demo-accounts       start with an empty account store',
     '  --no-npcs                do not spawn the demo monsters/NPCs',
+    '  --npc-tick <ms>          milliseconds between monster wander ticks (default 800, 0 = still)',
     '  --status-json            print one JSON status line on stdout once listening',
     '',
     'demo accounts (unless --no-demo-accounts): demo/demo -> DarkKnight, alt/alt -> ElfArcher',
@@ -108,6 +111,7 @@ export async function serverMain(argv: string[]): Promise<number> {
     xor32: options.xor32,
     withDemoAccounts: options.withDemoAccounts,
     withDemoNpcs: options.withDemoNpcs,
+    npcTickMs: options.npcTickMs,
     log: (message) => console.log(`[server] ${message}`),
   });
 

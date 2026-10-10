@@ -19,6 +19,7 @@ import { World, type NpcSpawn } from './world.js';
 
 export { AccountStore, type Account, type StoredCharacter } from './accounts.js';
 export { GameServer, GameServerSession, type GameServerMetrics, type SessionState } from './game-server.js';
+export { wanderNpcs, type NpcStep, type RandomFn, type WanderOptions } from './npc.js';
 export {
   World,
   DIRECTION_OFFSETS,
@@ -50,6 +51,10 @@ export interface MuServerOptions {
   /** Monsters/NPCs to spawn (defaults to the demo population; pass [] for an empty world). */
   npcSpawns?: readonly NpcSpawn[];
   withDemoNpcs?: boolean;
+  /** Milliseconds between monster wander ticks; 0 disables movement (default 800 in the demo). */
+  npcTickMs?: number;
+  /** Randomness source for the monster wander (tests pass a fixed sequence). */
+  npcRandom?: () => number;
   log?: (message: string) => void;
 }
 
@@ -59,6 +64,8 @@ export interface MuServer {
   host: string;
   world: World;
   accounts: AccountStore;
+  /** The game server itself, so callers can drive monster ticks and read per-session state. */
+  game: GameServer;
   metrics: { connect: ConnectServerMetrics; game: GameServer['metrics'] };
   close(): Promise<void>;
 }
@@ -89,6 +96,8 @@ export async function startMuServer(options: MuServerOptions = {}): Promise<MuSe
   await listen(gameServerSocket, options.gamePort ?? 0, host);
   const gamePort = (gameServerSocket.address() as { port: number }).port;
 
+  gameServer.startNpcTicker(options.npcTickMs ?? 800, options.npcRandom);
+
   const connectServerSocket = createServer();
   const connectMetrics = attachConnectServer(connectServerSocket, {
     serverList: options.serverList ?? [{ serverId: 0, loadPercentage: 0 }],
@@ -108,8 +117,10 @@ export async function startMuServer(options: MuServerOptions = {}): Promise<MuSe
     host,
     world,
     accounts,
+    game: gameServer,
     metrics: { connect: connectMetrics, game: gameServer.metrics },
     close(): Promise<void> {
+      gameServer.stopNpcTicker();
       return new Promise((resolve) => {
         let pending = 2;
         const done = (): void => {

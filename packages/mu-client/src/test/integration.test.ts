@@ -19,8 +19,14 @@ import { connectTcpSession } from '../net/tcp-session.js';
 import type { ClientSession } from '../core/session.js';
 import { connectSocketTransport } from '../net/socket-transport.js';
 
-async function withServer<T>(run: (server: MuServer) => Promise<T>): Promise<T> {
-  const server = await startMuServer({ log: process.env.MU_TEST_LOG === '1' ? console.log : undefined });
+async function withServer<T>(
+  run: (server: MuServer) => Promise<T>,
+  options: Parameters<typeof startMuServer>[0] = {},
+): Promise<T> {
+  const server = await startMuServer({
+    ...options,
+    log: process.env.MU_TEST_LOG === '1' ? console.log : undefined,
+  });
   try {
     return await run(server);
   } finally {
@@ -222,6 +228,72 @@ test('leaving the scope box removes the character from the other view, returning
       observer.close();
     }
   });
+});
+
+test('monsters wander and their walks reach the client as ObjectWalked', async () => {
+  // the ticker is off: the test drives the ticks itself, so the sequence is exact
+  await withServer(
+    async (server) => {
+      const session = await loginSession(server, 'demo');
+      try {
+        await session.requestCharacterList();
+        await session.selectCharacter('DarkKnight');
+        await session.clientReady();
+
+        const npcs = session.npcSnapshot();
+        assert.equal(npcs.length, 5, 'the whole demo population is in view');
+
+        const walks: { objectId: number; targetX: number; targetY: number; rotation: number }[] = [];
+        session.on('walked', (event) => walks.push(event));
+
+        // a fixed random source: rng 0.5 -> not idle, two steps, direction index 4 = south
+        const first = server.game.tickNpcs(() => 0.5);
+        assert.equal(first.length, 5);
+        assert.ok(first.every((step) => !step.idle && step.directions.length === 2));
+        await new Promise((resolve) => setTimeout(resolve, 120));
+
+        assert.equal(walks.length, 5, 'every monster walk is broadcast');
+        for (const npc of npcs) {
+          const walk = walks.find((entry) => entry.objectId === npc.id);
+          assert.ok(walk, `no walk for monster ${npc.id}`);
+          assert.equal(walk.targetX, npc.currentX, 'south keeps the x column');
+          assert.equal(walk.targetY, npc.currentY + 2, 'two steps south from the row the client knew');
+        }
+
+        // a second tick continues from the new position, and the client keeps up
+        server.game.tickNpcs(() => 0.5);
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        assert.equal(walks.length, 10);
+        for (const npc of npcs) {
+          const list = walks.filter((entry) => entry.objectId === npc.id);
+          assert.equal(list.length, 2);
+          assert.equal(list[1]!.targetY, list[0]!.targetY + 2);
+        }
+
+        // the client's remembered monster view follows the broadcasts ...
+        const tracked = new Map(session.npcSnapshot().map((npc) => [npc.id, npc]));
+        for (const npc of npcs) {
+          assert.equal(tracked.get(npc.id)?.currentY, npc.currentY + 4, 'npcSnapshot is up to date');
+        }
+
+        // ... and the world and the metrics agree that the monsters moved
+        assert.equal(server.metrics.game.npcTicks, 2);
+        assert.equal(server.metrics.game.npcSteps, 10);
+        for (const npc of npcs) {
+          assert.equal(server.world.get(npc.id)?.y, npc.currentY + 4);
+        }
+
+        // the periodic ticker is the same code path
+        server.game.startNpcTicker(40, () => 0.5);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        server.game.stopNpcTicker();
+        assert.ok(server.metrics.game.npcTicks > 2, 'the ticker kept ticking');
+      } finally {
+        session.close();
+      }
+    },
+    { npcTickMs: 0 },
+  );
 });
 
 test('monsters are spawned, visible in scope and removed when the player walks away', async () => {

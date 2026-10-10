@@ -349,7 +349,32 @@ export class ClientSession {
     }
     if (header.code === GAME_CODE.ObjectWalked) {
       const walked = parseObjectWalkedPacket(packet);
-      if (walked) this.emit('walked', walked);
+      if (walked) {
+        // keep the remembered views truthful: the position of every object we track moves with it
+        const character = this.scope.get(walked.objectId);
+        if (character) {
+          this.scope.set(walked.objectId, {
+            ...character,
+            currentX: walked.targetX,
+            currentY: walked.targetY,
+            targetX: walked.targetX,
+            targetY: walked.targetY,
+            rotation: walked.rotation,
+          });
+        }
+        const npc = this.npcs.get(walked.objectId);
+        if (npc) {
+          this.npcs.set(walked.objectId, {
+            ...npc,
+            currentX: walked.targetX,
+            currentY: walked.targetY,
+            targetX: walked.targetX,
+            targetY: walked.targetY,
+            rotation: walked.rotation,
+          });
+        }
+        this.emit('walked', walked);
+      }
       return;
     }
     if (header.code === GAME_CODE.ServerMessage) {

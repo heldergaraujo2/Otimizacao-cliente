@@ -1,20 +1,20 @@
 # NEXT_TASK — resume here
 
-**Updated:** 2026-10-10 (after cycle 11) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
+**Updated:** 2026-10-10 (after cycle 12) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
 · **Central repo:** `https://github.com/heldergaraujo2/Otimizacao-cliente`
 
-> **Start here:** cycles 1–11 are committed and pushed; `npm test` → **119 tests, 0 failures**
-> (protocol 43, formats 33, client 16, server 11, cli 9, gateway 7) and CI is green for the latest
-> commits. The vertical slice now covers login → characters → map → scope for **players and monsters**
-> → authoritative movement → ping → logout, with a browser client that renders terrain, animated
-> skinned characters and monsters.
+> **Start here:** cycles 1–12 are committed and pushed (cycle 12 = monsters that wander); the last
+> full run was `npm test` → **125 tests, 0 failures** (protocol 43, formats 33, client 17, server 16,
+> cli 9, gateway 7). The vertical slice covers login → characters → map → scope for **players and
+> monsters** → authoritative movement and monster wander → ping → logout, with a browser client that
+> renders terrain, animated skinned characters and monsters.
 >
-> **Next (cycle 12), in the order that pays off most:**
-> 1. **Monsters that move** — give NPCs a server-side wander/patrol step and broadcast it in the
->    existing `ObjectWalked` (C1 11, id-based, already implemented); teach the renderer to interpolate
->    NPC movement. This makes the world alive and needs no new packet layout.
-> 2. **A minimal damage/kill flow** — `ObjectGotKilled` (C1 17: `KilledId` BE16, `SkillId` BE16,
->    `KillerId` BE16, wire size 9) plus a server-side hit/HP model, so monsters can die and respawn.
+> **Next (cycle 13), in the order that pays off most:**
+> 1. **A minimal damage/kill flow** — `ObjectGotKilled` (C1 17: `KilledId` BE16, `SkillId` BE16,
+>    `KillerId` BE16, wire size 9) plus a server-side hit/HP model and respawn, so a monster can die and
+>    the client sees it leave the world.
+> 2. **Walkability-aware wander** — consult the ATT tile flags so monsters do not walk over water/walls,
+>    and give them a home radius so they stay near the spawn.
 > 3. **Texture binding for real files** — bind decoded OZT/OZB/DDS/TGA to the terrain material (the
 >    loader already decodes them; today the palette only uses tile attributes and texture indices).
 > 4. **Reconnect handling** — `F1 02` logout already exists; add a client-side resync/re-enter path and
@@ -32,6 +32,7 @@
 | 4 | Diff-based view synchronisation, `MapObjectOutOfScope`, standalone server CLI, Level 4 process tests, shared movement model, prediction/reconciliation | cycle 9 (commit `ff83546`), 103/103 at the time |
 | 5 | BMD animation + skinning, `export-obj`, animated skinned client renderer | cycle 10 (commit `2fc5dfb`), 115/115 |
 | 6 | Monsters/NPCs as world objects + `AddNpcsToScope` (C2 13) + client/renderer support | cycle 11, 119/119 |
+| 7 | Monsters that wander: `npc.ts` wander step through `World.move`, `tickNpcs()` broadcast, `--npc-tick`, client view tracking | cycle 12, 125/125, tick measured 0.082 ms for 200 monsters |
 
 ## Priority 4 — follow-ups (current)
 
@@ -39,7 +40,8 @@
   material; today the palette derives from tile attributes and texture indices even for real files.
 - Client: confirm the action-index convention (idle/walk/attack) against a real model (needs Fase 2
   data) and keep the clips driven by the session state.
-- Server: monster behaviour (wander/patrol, respawn) and a damage/kill flow — see cycle-12 steps 1–2.
+- Server: monster behaviour beyond the current wander (pathing/avoidance, home radius, respawn) and a
+  damage/kill flow — see the cycle-13 steps above.
 - Server: reconnect handling that keeps a dropped session's character out of the world and lets the
   client resync instead of restarting.
 - Compatibility: validate the walk direction numbering and the XOR32 profile against a real client
@@ -68,7 +70,7 @@
 
 ```bash
 npm install && npm run build          # required after a fresh snapshot (node_modules/dist are ignored)
-npm test                              # 119 tests expected
+npm test                              # 125 tests expected
 node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data
 npm run dev -w @mu-reengineer/client  # Vite on 0.0.0.0:5173, proxies /ws, /assets, /health
 ```

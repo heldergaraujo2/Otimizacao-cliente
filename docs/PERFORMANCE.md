@@ -42,6 +42,23 @@ is that sampling the hierarchy for a handful of bones costs microseconds, which 
 renderer can re-pose every character on the CPU **and** hand the same matrices to the GPU skinner
 without a measurable cost at the frame rates involved.
 
+### Monster tick (`mu-server`, 2026-10-10)
+
+Method: the probe starts a real server (`npcTickMs: 0`), spawns a grid of monsters, connects one real
+client session in game, then times `GameServer.tickNpcs()` — movement through `World.move` plus the
+scope check and the `ObjectWalked` broadcast to every session that can see the monster — over 2 000
+iterations after 200 warm-up ticks, three runs, median reported. Probe kept outside the repo (numbers
+recorded here with the method, as required).
+
+| Population | Median | Throughput | Broadcasts per tick | Notes |
+| --- | --- | --- | --- | --- |
+| 5 monsters (demo) + 1 session | 0.012 ms/tick | 81 604 ticks/s | 0.29 | most ticks idle (idle chance 0.25) |
+| 200 monsters + 1 session | 0.082 ms/tick | 12 218 ticks/s | 9.45 | the grid spreads over the whole map, so the scope check discards most broadcasts |
+
+Reading: one ticker at 800 ms is three orders of magnitude away from the limit, and the cost scales with
+**visible** monsters, not with the population — the scope filter runs before serialisation. Spread
+between runs was up to 1.8× on this 2 vCPU sandbox, as elsewhere in this document.
+
 ### Wire protocol (`npm run bench -w @mu-reengineer/protocol`)
 
 | Benchmark | Iterations | Time | Throughput | Bandwidth |
