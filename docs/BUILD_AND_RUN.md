@@ -92,12 +92,26 @@ Demo accounts (development only): `demo`/`demo` → character `DarkKnight`, `alt
 Browser renderer (implemented; needs a GPU in the *viewer's* machine):
 
 ```bash
-# terminal 1 — game server + WebSocket gateway on one command (binds 0.0.0.0:7788)
+# terminal 1 — game server + WebSocket gateway, also serving a data directory (binds 0.0.0.0:7788)
+node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir /path/to/MU/data
+#   or without a data directory (the page then renders its deterministic fixtures):
 node tools/mu-gateway/dist/index.js --ws-port 7788 --server
+#   MU_REENGINEER_DATA is used as the default for --data-dir
 
-# terminal 2 — the client page (Vite, binds 0.0.0.0:5173, proxies /ws to the gateway)
+# terminal 2 — the client page (Vite, binds 0.0.0.0:5173, proxies /ws, /assets and /health)
 npm run dev -w @mu-reengineer/client
 ```
+
+No real data at hand? Write a synthetic data directory in the classic server layout:
+
+```bash
+node scripts/make-demo-data.mjs                       # -> assets-local/demo-data (gitignored)
+node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data
+```
+
+The asset route can be checked without a browser: `curl -s http://127.0.0.1:7788/assets/` lists the data
+directory, `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7788/assets/World1/EncTerrain1.att`
+returns 200, and a case-insensitive path (`.../player/PLAYER.BMD`) resolves too.
 
 Open the printed URL, log in with `demo`/`demo` and walk with WASD/arrow keys. The HUD shows state,
 position, FPS, latency and packet counters. The page talks to the gateway through `/ws`, so it works

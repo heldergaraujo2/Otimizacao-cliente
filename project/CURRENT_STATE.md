@@ -99,6 +99,32 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 - **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
   are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
 
+### Resource layer + asset route — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+- `packages/mu-client/src/resources/loader.ts`: case-insensitive path resolution (Windows data trees),
+  cache keyed by resolved path + size + mtime (a replaced file is re-read — asserted), close-candidate
+  hints on 404, refusal of `..` traversal, typed loaders (`loadAtt`/`loadMap`/`loadObj`/`loadBmd`/
+  `loadTexture`) and `loadTerrain(worldIndex)` using the classic server naming
+  (`World<n>/EncTerrain<n>.{att,map,obj}`). 6 automated tests.
+- `tools/mu-gateway`: `GET /assets/` (JSON index + loader stats), `GET /assets/<path>` (streamed with
+  content types and cache headers), `/health` reporting the data directory and served counters.
+  4 automated tests (bytes identical to the file, case-insensitive lookup, 404 with candidates and no
+  absolute path, 405/HEAD).
+- `scripts/make-demo-data.mjs` writes a synthetic data directory in that layout so the preview can be
+  exercised without proprietary files.
+
+Verified live (2026-10-10, gateway restarted with `--data-dir assets-local/demo-data`, all requests
+through the Vite proxy the browser uses):
+
+```
+GET /assets/                        -> 6 files (Player/Player.bmd, World1/EncTerrain1.{att,map,obj}, 2x .OZT)
+GET /assets/World1/EncTerrain1.att  -> 131076 B (= 4 + 256*256*2, the real ATT size)
+GET /assets/player/PLAYER.BMD       -> 200 (case-insensitive)
+GET /assets/World1/EncTerrain2.att  -> 404
+ws://127.0.0.1:5173/ws              -> login 0, scope ['DarkKnight'], ping ok,
+                                       framingRejects 0 / decryptErrors 0 / encryptErrors 0
+```
+
 ### `tools/mu-gateway` — CONCLUÍDO COM EVIDÊNCIAS
 
 WebSocket ⇄ TCP bridge (one TCP connection per WebSocket, `/health` endpoint, `--server` flag to start

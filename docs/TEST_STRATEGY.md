@@ -51,9 +51,13 @@ long-running (hours) session check.
 
 Target: representative scenes (terrain + objects + character), missing/corrupt file handling, animation
 playback, visual regression when tooling allows.
-**State: NÃO INICIADO** for rendering; the *resource* half is partially covered by the format suite
-(fixture round-trips, malformed input). Real-asset rendering requires the user's data (Fase 2) —
-`PENDENTE DE VALIDAÇÃO HUMANA`.
+**State: EM ANDAMENTO** — the resource half is covered by automated tests: the loader
+(`packages/mu-client/src/test/resources.test.ts`, 6 tests: bundle loading with case-insensitive paths,
+cache hit and invalidation on file replacement, close-candidate 404s, traversal refusal, texture
+decoding, environment-based root) and the gateway asset route
+(`tools/mu-gateway/src/test/assets.test.ts`, 4 tests: byte-exact serving, index, 404 hints without
+leaking absolute paths, 405/HEAD handling). Rendering is implemented and served as a live preview, but
+**visual validation needs a GPU and real assets** — `PENDENTE DE VALIDAÇÃO HUMANA`.
 
 ## Level 6 — performance
 

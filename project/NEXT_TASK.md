@@ -2,9 +2,10 @@
 
 **Updated:** 2026-10-10 · **Branch:** session branch (`arena/ef58bc1d-otimizacao-cliente`)
 
-> **Start here:** Priorities 1–3 are finished (core, server, gateway, renderer). Next: **Priority 4**
-> — the resource pipeline cache + real-data conformance once the user supplies assets, animation wiring,
-> movement reconciliation, and the honest human validation of Levels 5–7 (all listed below).
+> **Start here:** Priorities 1–3 are finished and the resource layer (loader cache + gateway asset
+> route) landed in cycle 6. Next: **Priority 4** — texture binding and BMD animation playback in the
+> renderer, scope removal on disconnect, a standalone server entry point, movement reconciliation, and
+> the human validation of Levels 5–7.
 
 ## Priority 1 — `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
@@ -99,14 +100,14 @@ validation remains human-only (no GPU here).
 ## Priority 4 — follow-ups (current)
 
 - Server: scope-removal packet when a character disconnects or leaves the box; reconnect handling.
-- Server: standalone process entry point (`node packages/mu-server/dist/main.js`) with CLI flags.
+- Server: standalone process entry point with CLI flags (the gateway already starts it in-process).
 - Compatibility: validate the walk direction numbering and the XOR32 profile against a real client
   (needs a packet capture from the user).
 - Client: movement prediction/reconciliation so the local player does not depend on server echoes.
-- Client: resource pipeline **cache** (path+size+mtime) and a loader over a real data directory
-  (`MU_REENGINEER_DATA`) — the renderer currently builds meshes from generated fixtures.
-- Client: BMD action playback (clips are parsed; the mesh renders in bind pose) and texture binding
-  from the mapped texture paths.
+- Client: bind decoded textures (OZT/OZB/DDS/TGA — the loader already decodes them) to the terrain
+  material; today the palette derives from tile attributes and texture indices even for real files.
+- Client: BMD action playback (clips are parsed; the mesh renders in bind pose).
+- Server: `RemoveCharactersFromScope` (C2 13) when a character disconnects or leaves the scope box.
 - Client: draw distance / instancing once real maps are available; HUD already exposes the metrics.
 
 ## Priority 5 — what only the user can validate (do not claim these)
