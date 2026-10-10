@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MU-REENGINEER client</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0d1117;
+        color: #e6edf3;
+        overflow: hidden;
+      }
+      #view {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        margin: 0;
+        padding: 10px 12px;
+        background: rgba(3, 8, 20, 0.72);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre;
+      }
+      #login {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        padding: 12px;
+        background: rgba(3, 8, 20, 0.78);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        font-size: 12px;
+      }
+      #login label {
+        display: grid;
+        gap: 4px;
+      }
+      input,
+      button {
+        font: inherit;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #30363d;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+      button {
+        background: #1f6feb;
+        border-color: #1f6feb;
+        cursor: pointer;
+      }
+      #status {
+        position: fixed;
+        right: 12px;
+        top: 12px;
+        max-width: 46ch;
+        padding: 8px 10px;
+        background: rgba(3, 8, 20, 0.78);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        font-size: 12px;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <form id="login">
+      <strong>MU-REENGINEER</strong>
+      <label>gateway<input id="gateway" value="/ws" /></label>
+      <label>account<input id="user" value="demo" /></label>
+      <label>password<input id="pass" type="password" value="demo" /></label>
+      <button type="submit">Connect</button>
+    </form>
+
+    <pre id="hud">booting…</pre>
+    <div id="status">loading renderer…</div>
+
+    <script type="module" src="/src/browser/main.ts"></script>
+  </body>
+</html>

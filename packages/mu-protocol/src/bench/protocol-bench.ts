@@ -101,7 +101,7 @@ function main(): void {
   // NOTE: the legacy "old" variant (16 words, 32-byte blocks, no counter, used by clients older
   // than the 8-byte-block era) is implemented but deliberately not benchmarked here: the reference
   // key pairs shipped by OpenMU are 4-word sets, so exercising it would need a synthetic 48-value
-  // key set. See docs/TESTING.md ("documented gaps") and NEXT_TASK.md.
+  // key set. See docs/TEST_STRATEGY.md ("documented gaps") and NEXT_TASK.md.
 
   // --- XOR32 stream cipher (used on top of SimpleModulus by some clients) -----------------------
   const xorPacket = new Uint8Array(1024);

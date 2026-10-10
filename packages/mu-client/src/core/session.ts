@@ -30,13 +30,16 @@ import {
   type ScopeCharacter,
 } from '@mu-reengineer/protocol';
 
-import { connectSocketTransport, type ConnectOptions } from '../net/socket-transport.js';
+import type { MuTransport } from '@mu-reengineer/protocol';
 
-export interface SessionOptions extends ConnectOptions {
+export interface SessionOptions {
   xor32?: boolean;
   defaultTimeoutMs?: number;
   log?: (message: string) => void;
 }
+
+/** Transport factory: node TCP in tests/CLI, WebSocket in the browser. */
+export type TransportFactory = () => Promise<MuTransport>;
 
 export interface MapChangedInfo {
   isMapChange: boolean;
@@ -91,8 +94,12 @@ export class ClientSession {
     });
   }
 
-  static async connect(options: SessionOptions): Promise<ClientSession> {
-    const transport = await connectSocketTransport(options);
+  /**
+   * Attaches a session to any transport (node TCP, browser WebSocket, in-memory pipe).
+   * Keeping the transport injected is what lets the same core run headless in tests and in the
+   * browser renderer.
+   */
+  static attach(transport: MuTransport, options: SessionOptions = {}): ClientSession {
     const connection = new MuConnection({
       role: 'client',
       transport,

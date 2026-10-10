@@ -14,6 +14,19 @@
 
 Host: Linux x86_64 container, Intel Xeon @ 2.60 GHz, 2 vCPU, 3.9 GiB RAM, Node `v22.22.3`.
 
+### Network round trip (client ⇄ server, 2026-10-10)
+
+Measured with the real stack (server on loopback, `demo` session, 400 pings after a 20-ping warmup):
+
+| Path | Median | Throughput | Notes |
+| --- | --- | --- | --- |
+| `connectTcpSession` → game server | 0.181 ms/ping | 5 511 ping/s | cipher + framing included |
+| WebSocket → `tools/mu-gateway` → TCP | 0.295 ms/ping | 3 392 ping/s | the browser path |
+| Gateway overhead | **0.113 ms/ping** | — | one extra hop, one buffer copy |
+
+Method: sequential request/response (latency-bound, single connection), loopback, same 2-vCPU container
+as above; `docs/TEST_STRATEGY.md` Level 6/7 still requires a real network for the honest numbers.
+
 ### Wire protocol (`npm run bench -w @mu-reengineer/protocol`)
 
 | Benchmark | Iterations | Time | Throughput | Bandwidth |

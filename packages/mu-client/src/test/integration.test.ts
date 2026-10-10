@@ -15,7 +15,8 @@ import { startMuServer, type MuServer } from '@mu-reengineer/server';
 import { buildLoginLongPassword, GAME_CODE, LoginResult, MuConnection, readPacketHeader } from '@mu-reengineer/protocol';
 
 import { fetchConnectionInfo, fetchServerList } from '../core/connect-client.js';
-import { ClientSession } from '../core/session.js';
+import { connectTcpSession } from '../net/tcp-session.js';
+import type { ClientSession } from '../core/session.js';
 import { connectSocketTransport } from '../net/socket-transport.js';
 
 async function withServer<T>(run: (server: MuServer) => Promise<T>): Promise<T> {
@@ -28,7 +29,7 @@ async function withServer<T>(run: (server: MuServer) => Promise<T>): Promise<T> 
 }
 
 async function loginSession(server: MuServer, username: string, xor32 = true): Promise<ClientSession> {
-  const session = await ClientSession.connect({ host: server.host, port: server.gamePort, xor32 });
+  const session = await connectTcpSession({ host: server.host, port: server.gamePort, xor32 });
   const result = await session.login(username, username);
   assert.equal(result, LoginResult.Okay, `login for ${username} failed with code ${result}`);
   return session;
@@ -52,13 +53,13 @@ test('connect server hands out the server list and the game server address', asy
 
 test('wrong credentials are rejected and the connection is closed', async () => {
   await withServer(async (server) => {
-    const session = await ClientSession.connect({ host: server.host, port: server.gamePort });
+    const session = await connectTcpSession({ host: server.host, port: server.gamePort });
     const result = await session.login('demo', 'not-the-password');
     assert.equal(result, LoginResult.InvalidPassword);
     assert.equal(server.metrics.game.loginsFailed, 1);
     assert.equal(server.metrics.game.logins, 0);
 
-    const session2 = await ClientSession.connect({ host: server.host, port: server.gamePort });
+    const session2 = await connectTcpSession({ host: server.host, port: server.gamePort });
     assert.equal(await session2.login('ghost', 'ghost'), LoginResult.InvalidAccount);
 
     session.close();

@@ -72,12 +72,12 @@ them from a script:
 ```js
 // demo.mjs — needs `npm run build` first
 import { startMuServer } from '@mu-reengineer/server';
-import { ClientSession, fetchServerList, fetchConnectionInfo } from '@mu-reengineer/client';
+import { connectTcpSession, fetchServerList, fetchConnectionInfo } from '@mu-reengineer/client';
 
 const server = await startMuServer({});                    // ephemeral ports
 console.log(await fetchServerList(server.host, server.connectPort));       // [ { serverId: 0, loadPercentage: 0 } ]
 const game = await fetchConnectionInfo(server.host, server.connectPort, 0);
-const session = await ClientSession.connect({ host: game.ipAddress, port: game.port });
+const session = await connectTcpSession({ host: game.ipAddress, port: game.port });
 console.log(await session.login('demo', 'demo'));          // 0 = LoginResult.Okay
 console.log(await session.requestCharacterList());
 await session.selectCharacter('DarkKnight');
@@ -89,10 +89,24 @@ await server.close();
 
 Demo accounts (development only): `demo`/`demo` → character `DarkKnight`, `alt`/`alt` → `ElfArcher`.
 
-Browser renderer commands (EM ANDAMENTO — the renderer itself is not implemented yet):
+Browser renderer (implemented; needs a GPU in the *viewer's* machine):
 
 ```bash
-npm run dev -w @mu-reengineer/client -- --host 0.0.0.0   # planned Vite entry point
+# terminal 1 — game server + WebSocket gateway on one command (binds 0.0.0.0:7788)
+node tools/mu-gateway/dist/index.js --ws-port 7788 --server
+
+# terminal 2 — the client page (Vite, binds 0.0.0.0:5173, proxies /ws to the gateway)
+npm run dev -w @mu-reengineer/client
+```
+
+Open the printed URL, log in with `demo`/`demo` and walk with WASD/arrow keys. The HUD shows state,
+position, FPS, latency and packet counters. The page talks to the gateway through `/ws`, so it works
+unchanged behind a host/proxy (nothing in browser code references localhost).
+
+To point the gateway at an external server instead of the bundled one:
+
+```bash
+node tools/mu-gateway/dist/index.js --ws-port 7788 --game-host 127.0.0.1 --game-port 55901
 ```
 
 ## 6.1 Cipher profile

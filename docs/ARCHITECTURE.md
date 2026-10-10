@@ -63,7 +63,34 @@ file bytes ─► container cipher ─► format reader ─► render-ready data
 - Why: Levels 3/4 (session, movement, disconnect) are testable without a GPU, and the renderer can be
   replaced without touching game logic.
 
-## 5. Server (planned, Fase 10)
+## 4.1 Browser client and gateway (implemented)
+
+The browser cannot open TCP sockets, so the client is split in two layers plus a bridge:
+
+```
+browser page (three.js renderer, HUD, input)
+      │  ClientSession  ── same core as the node tests (cipher pipeline, framing, state machine)
+      │  WebSocket transport  ── binary frames = raw MU packets
+      ▼
+vite dev server  (/ws proxy, same-origin, works behind any host)
+      ▼
+tools/mu-gateway (WebSocket ⇄ TCP, one TCP connection per WebSocket)
+      ▼
+packages/mu-server (connect + game listeners)
+```
+
+Design notes:
+
+- The **core never imports three.js** — the renderer subscribes to `ClientSession` state, which is why
+  the whole session is testable headlessly (`npm test`).
+- The page uses a **relative** gateway URL (`/ws`) and vite proxies it, so no localhost address is baked
+  into browser code and the same build works behind the preview proxy.
+- The gateway keeps one TCP connection per WebSocket, so cipher counters and the session state stay
+  per-connection (proved by the "two clients are independent" test).
+- Movement is predicted locally and confirmed by the server's `ObjectWalked` broadcast (reconciliation
+  is the next step).
+
+## 5. Server (implemented — see §3 above)
 
 - ConnectServer and GameServer listeners sharing `MuConnection` (server role), accounts/characters in
   memory (file-persisted optionally), scope/viewport management, movement validation, chat and server

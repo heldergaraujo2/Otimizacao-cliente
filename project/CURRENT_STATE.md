@@ -84,12 +84,37 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
                "unsupportedPackets":0,"disconnects":0}
 ```
 
-### `packages/mu-client` — EM ANDAMENTO (headless core done, renderer not started)
+### `packages/mu-client` — EM ANDAMENTO (core + renderer implemented, visuals unverified)
 
-Implemented and tested: `ClientSession` (login, character list, selection, client ready, walk, ping,
-event streams for scope/walked/server message, buffered `waitFor`) and the ConnectServer client
-(`fetchServerList`, `fetchConnectionInfo`). The browser renderer (three.js) is **NÃO INICIADO** — the
-core deliberately has no rendering dependency so Levels 3/4 can run headless.
+- **Core (tested):** `ClientSession` (login, character list, selection, client ready, walk, ping, event
+  streams for scope/walked/server message, buffered `waitFor`), ConnectServer client
+  (`fetchServerList`, `fetchConnectionInfo`) and `connectTcpSession`.
+- **Transport-agnostic:** `ClientSession.attach(transport)` takes any transport, so the same core runs
+  over node TCP (tests) and over WebSocket (browser).
+- **Renderer (new):** `src/browser/` — `MuRenderer` builds the terrain mesh from ATT/MAP tile
+  attributes (water/safe/no-ground colouring plus texture-index shading), places OBJ objects, builds
+  the character mesh from BMD geometry via `extractMeshGeometry`, follows the player with the camera and
+  reports FPS. `main.ts` wires login → character list → selection → client ready → keyboard movement
+  with local prediction → HUD (state, position, FPS, latency, packet/byte counters).
+- **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
+  are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
+
+### `tools/mu-gateway` — CONCLUÍDO COM EVIDÊNCIAS
+
+WebSocket ⇄ TCP bridge (one TCP connection per WebSocket, `/health` endpoint, `--server` flag to start
+the bundled game server). 3/3 tests: full session through the bridge, health/404 handling, and two
+independent sessions on the same gateway (the second login of one account is rejected — proof the
+sessions really are separate TCP connections).
+
+Manual end-to-end proof of the browser path (recorded):
+
+```
+page: 200 (vite dev server)
+ws://127.0.0.1:5173/ws  →  login 0 · characters ['DarkKnight'] · map {"mapNumber":0,"x":125,"y":125}
+                           scope ['DarkKnight'] · ping {"tickCount":667674895}
+                           metrics {"packetsIn":7,"packetsOut":6,"bytesIn":249,"bytesOut":145,
+                                    "framingRejects":0,"decryptErrors":0,"encryptErrors":0}
+```
 
 ### `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS
 

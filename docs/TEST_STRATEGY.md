@@ -39,9 +39,13 @@ them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence r
 
 Target: process-level run (server process + headless client process) covering startup, connection,
 authentication, session flow, movement, disconnect/reconnect.
-**State: EM ANDAMENTO** — the session flow, movement and disconnect are covered by the Level 3 suite
-(real sockets, real processes inside the test runner). Still missing: a standalone server process (CLI
-entry point), reconnect after an unexpected drop and a long-running session check.
+**State: CONCLUÍDO COM EVIDÊNCIAS** — beyond the in-test sockets, the real process chain was run
+manually and through an automated test: `mu-server` + `tools/mu-gateway` as **separate processes**, a
+client over the **WebSocket** transport (the browser path) performing login → character list →
+selection → scope → movement → ping → disconnect cleanup (`tools/mu-gateway/src/test/gateway.test.ts`,
+3/3), plus a live `vite` dev server proxying `/ws` to the gateway (`curl` 200 for the page, session flow
+driven through `ws://127.0.0.1:5173/ws`). Still missing: reconnect after an unexpected drop and a
+long-running (hours) session check.
 
 ## Level 5 — visual and resources
 

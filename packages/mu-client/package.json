@@ -15,14 +15,23 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "vite",
+    "build:browser": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
     "test": "node --test \"dist/test/*.test.js\""
   },
   "dependencies": {
     "@mu-reengineer/formats": "*",
-    "@mu-reengineer/protocol": "*"
+    "@mu-reengineer/protocol": "*",
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
-    "@mu-reengineer/server": "*"
+    "@mu-reengineer/server": "*",
+    "@types/three": "^0.186.0",
+    "@types/ws": "^8.18.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
   },
   "engines": {
     "node": ">=22"

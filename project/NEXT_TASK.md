@@ -2,8 +2,9 @@
 
 **Updated:** 2026-10-10 · **Branch:** session branch (`arena/ef58bc1d-otimizacao-cliente`)
 
-> **Start here:** Priorities 1 and 2 are finished — begin with **Priority 3** (browser renderer +
-> resource pipeline in the client), then the follow-ups under Priority 4.
+> **Start here:** Priorities 1–3 are finished (core, server, gateway, renderer). Next: **Priority 4**
+> — the resource pipeline cache + real-data conformance once the user supplies assets, animation wiring,
+> movement reconciliation, and the honest human validation of Levels 5–7 (all listed below).
 
 ## Priority 1 — `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
@@ -88,13 +89,34 @@ The headless core is done (session + connect client, integration-tested). Remain
 3. Serve a live preview (`vite --host 0.0.0.0`) and document that Levels 5–7 remain
    `PENDENTE DE VALIDAÇÃO HUMANA` from this environment.
 
-## Priority 4 — follow-ups found during cycle 4
+## Priority 3 — browser renderer + gateway — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+`packages/mu-client/src/browser/` (three.js renderer + page + HUD) and `tools/mu-gateway` (WebSocket ⇄
+TCP bridge). Live preview served (Vite `0.0.0.0:5173`, gateway `0.0.0.0:7788`), a real session driven
+through the WebSocket path, 3/3 gateway tests, measured bridge overhead 0.113 ms/ping. Visual/frame
+validation remains human-only (no GPU here).
+
+## Priority 4 — follow-ups (current)
 
 - Server: scope-removal packet when a character disconnects or leaves the box; reconnect handling.
 - Server: standalone process entry point (`node packages/mu-server/dist/main.js`) with CLI flags.
 - Compatibility: validate the walk direction numbering and the XOR32 profile against a real client
   (needs a packet capture from the user).
 - Client: movement prediction/reconciliation so the local player does not depend on server echoes.
+- Client: resource pipeline **cache** (path+size+mtime) and a loader over a real data directory
+  (`MU_REENGINEER_DATA`) — the renderer currently builds meshes from generated fixtures.
+- Client: BMD action playback (clips are parsed; the mesh renders in bind pose) and texture binding
+  from the mapped texture paths.
+- Client: draw distance / instancing once real maps are available; HUD already exposes the metrics.
+
+## Priority 5 — what only the user can validate (do not claim these)
+
+| Level | Needs | Roteiro |
+| --- | --- | --- |
+| 5 — visual | a GPU browser; real assets for true fidelity | open the preview URL, log in, compare the scene with a real client screenshot |
+| 6 — performance | GPU + repeated runs | `docs/PERFORMANCE.md` §3 (frame times p50/p95/p99, memory, CPU/GPU) |
+| 7 — real hardware/network | second machine, real latency | `docs/PERFORMANCE.md` §4 |
+| Fase 2/6 conformance | MU Red S20 v1.20.61 data | `MU_REENGINEER_DATA=… npm run cli -- inspect <file>` |
 
 ## Externally blocked (needs the user)
 
