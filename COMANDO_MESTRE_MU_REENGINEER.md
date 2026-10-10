@@ -3,7 +3,9 @@
 
 /goal
 
-A partir deste comando, você será o responsável técnico por conduzir o projeto MU-REENGINEER, desde a preparação inicial dos repositórios até o desenvolvimento, a integração e a validação de um cliente MU Online moderno, otimizado e funcional.
+A partir deste comando, você será o agente técnico executor responsável por conduzir o projeto MU-REENGINEER de ponta a ponta: pesquisar, auditar, planejar, desenvolver/reconstruir o CLIENTE e o SERVIDOR, integrar os componentes, testar, corrigir, medir desempenho e documentar tudo no repositório central até esgotar as tarefas tecnicamente executáveis.
+
+MODO DE EXECUÇÃO: trabalhe continuamente por fases e subtarefas, sem parar depois de produzir apenas um plano ou relatório. Em cada ciclo, selecione a próxima tarefa concreta não bloqueada, faça a alteração real, execute verificações, corrija falhas encontradas, registre evidências e atualize a continuidade; em seguida, avance para a próxima tarefa automaticamente. Use as ferramentas reais disponíveis na Arena.ai. Não peça confirmação para decisões técnicas rotineiras, reversíveis e de baixo risco. Se o ambiente tiver limite de tempo, tokens, chamadas ou sessão, encerre o ciclo salvando o estado e deixando NEXT_TASK.md com uma próxima ação específica para retomada imediata. Não afirme que continuará rodando em segundo plano depois que a plataforma encerrar sua execução.
 
 Trabalhe de maneira contínua, organizada, técnica e orientada por evidências. Sempre que houver ferramentas e permissões disponíveis, examine os repositórios, leia o código existente, execute as ações possíveis, implemente alterações, rode testes e registre resultados reais.
 
@@ -343,3 +345,137 @@ O projeto será considerado concluído quando houver evidências de que:
 O objetivo final é desenvolver um cliente MU Online moderno, eficiente, tecnicamente verificável e visualmente fiel aos recursos que possamos utilizar legalmente.
 
 **Comece pela auditoria do estado real do repositório e do ambiente. Depois, avance automaticamente pelas tarefas prontas, mantendo resultados e continuidade registrados no GitHub.**
+
+
+# 14. MODO DE EXECUÇÃO AUTÔNOMA CONTÍNUA — ARENA.AI
+
+Esta seção tem prioridade operacional sobre qualquer comportamento que faça o agente parar após pesquisa, planejamento ou uma única alteração. O objetivo é executar trabalho real em ciclos sucessivos, respeitando limites da plataforma, segurança, licenças e permissões.
+
+## 14.1. Ciclo obrigatório de trabalho
+
+Repita o ciclo abaixo enquanto houver tempo, ferramentas e tarefas executáveis:
+
+1. **Retomar:** leia AGENTS.md, README.md e os arquivos de continuidade. Confira branch, último commit, diff, arquivos não rastreados e estado do CI. Preserve trabalho existente.
+2. **Selecionar:** escolha a tarefa de maior prioridade que tenha pré-requisitos disponíveis. Prefira tarefas pequenas que desbloqueiem build, testes, integração cliente-servidor ou medição de desempenho.
+3. **Pesquisar com propósito:** consulte documentação oficial, código-fonte e issues relevantes. Registre links, versão, data de consulta, conclusões e incertezas. Não faça pesquisas repetidas sem uma pergunta técnica concreta.
+4. **Implementar:** altere código, configuração, scripts, ferramentas ou documentação; não entregue apenas recomendações quando a alteração puder ser feita no ambiente.
+5. **Validar:** execute os testes apropriados à alteração. Registre comandos, ambiente, resultado, logs relevantes e falhas. Não invente resultados.
+6. **Corrigir:** se o teste falhar, diagnostique e tente corrigir. Reexecute os testes afetados e regressões relevantes. Não esconda falhas nem afrouxe testes apenas para obter aprovação.
+7. **Revisar:** inspecione o diff, procure segredos, arquivos proprietários, binários inesperados, dependências desnecessárias e alterações destrutivas.
+8. **Persistir:** atualize CURRENT_STATE.md, NEXT_TASK.md, CHANGELOG.md e os demais documentos afetados. Faça commits pequenos com mensagens claras quando Git estiver disponível e o conjunto estiver validado.
+9. **Avançar:** se os critérios da tarefa forem atendidos, selecione automaticamente a próxima tarefa. Se não forem, continue corrigindo ou registre um bloqueio verificável e trabalhe em outra tarefa independente.
+10. **Retomar sem perda:** ao iniciar uma nova sessão, continue de NEXT_TASK.md e do estado real do Git; não recomece desde a Fase 0 sem motivo.
+
+Não considere uma pesquisa, uma lista de tarefas ou a criação de pastas como conclusão de desenvolvimento. Cada tarefa deve produzir um artefato, uma verificação ou uma decisão técnica sustentada por evidências.
+
+## 14.2. Desenvolver o CLIENTE e o SERVIDOR no repositório central
+
+O repositório central Otimizacao-cliente deve conter o código próprio, configurações, scripts de build, testes e documentação necessários para construir e validar a solução. Após auditar o estado existente, organize os componentes de forma clara, por exemplo:
+
+- client/: cliente MU em desenvolvimento, integrações e configurações próprias.
+- server/: servidor principal escolhido e código de integração/adaptação próprio.
+- tools/: ferramentas de inspeção, conversão e diagnóstico.
+- tests/: testes unitários, integração, protocolo, recursos e regressão.
+- benchmarks/: cenários, scripts, resultados e instruções de medição.
+- docs/ e project/: arquitetura, decisões, roadmap e continuidade.
+- third_party/ ou submodules: referências externas fixadas em versões/commits conhecidos, se adequado.
+- scripts/: automação reproduzível de configuração, build, teste e validação.
+
+Essa estrutura é uma proposta, não uma ordem para duplicar repositórios ou mover código às cegas. Primeiro inspecione o conteúdo atual. Preserve atribuição, licença e histórico quando possível. Não copie o histórico inteiro nem todo o conteúdo de projetos externos para o repositório central sem justificativa. Prefira submodules ou scripts de preparação reproduzíveis quando apropriado.
+
+**Cliente:** determine se a base xulek/muonline pode ser compilada e estendida legalmente. Identifique a parte que será reaproveitada, a parte que exige adaptação e a parte que precisará ser implementada. Se a base não atender ao objetivo, produza uma decisão técnica documentada e implemente um caminho incremental realista. Não alegue que o cliente foi recriado se apenas foi clonado.
+
+**Servidor:** audite OpenMU e MuEmu, compare compatibilidade com o protocolo e as funcionalidades pretendidas, licenças, manutenção e capacidade de teste. Escolha e registre um servidor principal. Integre-o como componente versionado ou submodule, ou implemente/adapte os componentes necessários no diretório server/ conforme a licença e arquitetura. Não mantenha servidores concorrentes sem uma razão técnica testável. Não declare compatibilidade com Season 6/20 até demonstrar conexão e troca de mensagens compatíveis.
+
+**Integração:** construa uma fatia vertical mínima e testável entre cliente e servidor: inicialização, conexão, negociação/protocolo quando aplicável, autenticação de teste segura, criação/seleção de sessão/personagem conforme suportado, troca de estado e desconexão limpa. Amplie o escopo progressivamente. Se a autenticação real exigir credenciais ou serviços externos, crie testes locais com dados fictícios e não simule sucesso contra um serviço real.
+
+## 14.3. Ordem de prioridade e execução em paralelo
+
+Priorize nesta ordem, reordenando somente com justificativa documentada:
+
+1. Integridade do repositório, segurança, licenças e continuidade.
+2. Build reproduzível de cada componente e ferramentas mínimas de diagnóstico.
+3. Testes automatizados e correção dos bloqueios de build.
+4. Carregamento de recursos e demonstração visual mínima do cliente.
+5. Servidor selecionado compilável/inicializável e testes básicos de protocolo.
+6. Integração cliente-servidor demonstrável.
+7. Cobertura dos sistemas essenciais e tratamento de erros.
+8. Benchmarks reproduzíveis, profiling e otimizações orientadas por métricas.
+9. Testes de regressão, instalação limpa, documentação e pacote legalmente distribuível.
+
+Quando possível, trabalhe em tarefas independentes sem criar conflitos de escrita. Não faça alterações simultâneas no mesmo arquivo. Não inicie várias tarefas que dependam de uma decisão ainda não validada.
+
+## 14.4. Critérios de saída de cada tarefa/fase
+
+Antes de marcar uma tarefa como concluída, confirme:
+- O artefato esperado existe e foi inspecionado.
+- O build/teste relevante foi realmente executado, ou a impossibilidade está claramente documentada.
+- O resultado foi registrado com evidência suficiente para repetição.
+- Não há falha crítica conhecida omitida do relatório.
+- Documentação e NEXT_TASK.md refletem o estado atual.
+- A próxima tarefa está selecionada.
+
+Use estados inequívocos: NÃO INICIADO, EM ANDAMENTO, CONCLUÍDO COM EVIDÊNCIAS, BLOQUEADO EXTERNAMENTE, FALHOU ou NÃO APLICÁVEL COM JUSTIFICATIVA. Não use “concluído” para código apenas escrito e ainda não validado.
+
+## 14.5. Escada de testes obrigatória
+
+Execute o nível mais profundo permitido pelo ambiente:
+
+- **Nível 1 — estático:** formatação, lint, análise estática, validação de configuração, verificação de segredos e dependências.
+- **Nível 2 — unitário:** funções, parsers, serialização, estruturas de recursos e lógica isolada.
+- **Nível 3 — integração local:** processos cliente/servidor, banco de dados se necessário, protocolo, carregamento de recursos e ciclo de sessão.
+- **Nível 4 — ponta a ponta:** inicialização, conexão, fluxo essencial do usuário/personagem, movimentação suportada, desconexão e reinicialização.
+- **Nível 5 — visual e recursos:** cenas e recursos representativos, arquivos ausentes/corrompidos, animações e regressão visual quando ferramentas permitirem.
+- **Nível 6 — desempenho:** cenários repetíveis, FPS, p50/p95/p99 de frame time, stutter, CPU, GPU, RAM/VRAM, tempo de carregamento e duração do teste.
+- **Nível 7 — ambiente real:** testar em hardware/sistema operacional reais e rede externa quando disponíveis. Se o agente não possuir essa capacidade, documente o roteiro exato e marque como PENDENTE DE VALIDAÇÃO HUMANA, sem alegar aprovação.
+
+Sempre rode novamente os testes afetados após uma correção. Se uma suíte completa for demorada, rode primeiro o teste específico e depois a regressão mais ampla viável. Registre testes pulados e a razão.
+
+## 14.6. Bloqueios: não parar o projeto inteiro
+
+Quando uma tarefa for bloqueada por ausência de credenciais, dados, autorização, hardware, acesso à rede, limite da plataforma ou dependência indisponível:
+
+1. Registre o erro exato e a evidência.
+2. Confirme que o bloqueio é real e não um erro de configuração corrigível.
+3. Procure alternativa segura, legal e tecnicamente válida.
+4. Se houver alternativa, implemente-a e teste-a, sem fingir que é equivalente ao alvo bloqueado.
+5. Se não houver alternativa, escreva em NEXT_TASK.md o que falta, quem precisa agir, o comando exato a executar e o resultado esperado.
+6. Continue em tarefas independentes que não dependam desse bloqueio.
+7. Não repita indefinidamente uma ação que falha pelo mesmo motivo sem nova hipótese ou mudança de condição.
+
+Não peça autorização para decisões rotineiras e reversíveis. Exija confirmação antes de ações irreversíveis, publicação de conteúdo de licenciamento duvidoso, exclusão destrutiva, alteração de credenciais/permissões, compra de serviços ou operações que possam comprometer dados do usuário.
+
+## 14.7. GitHub, commits e integridade
+
+- Faça commits pequenos, com mensagem descritiva e vinculados a mudanças reais.
+- Antes de editar, confira a branch e o estado do working tree; preserve alterações de outros agentes.
+- Nunca sobrescreva silenciosamente alterações alheias nem use force push para contornar conflitos.
+- Não comite tokens, senhas, chaves, dados pessoais, arquivos de jogo proprietários, dumps grandes, builds ou caches.
+- Fixe dependências externas em versões/commits identificáveis e registre como inicializar os submodules.
+- Se não houver permissão para publicar, mantenha as alterações locais e informe o que falta; não afirme que foi enviado ao GitHub.
+- Se CI estiver disponível, acompanhe os resultados. Um commit publicado não equivale a build ou testes aprovados.
+
+## 14.8. Relatório curto de cada ciclo
+
+Ao encerrar um ciclo de trabalho, apresente:
+- fase e tarefa atual;
+- alterações concretas e commit/branch, se houver;
+- comandos de validação realmente executados;
+- testes aprovados, falhos, pulados e pendentes;
+- bloqueios externos;
+- próxima tarefa específica.
+
+O relatório ao usuário deve ser conciso; o histórico técnico completo pertence aos arquivos do repositório.
+
+## 14.9. Condição para continuar e condição de parada
+
+Continue automaticamente enquanto existir ao menos uma tarefa segura, legal e executável no ambiente. Não pare porque o roadmap é longo, porque uma fase exige várias tentativas ou porque uma primeira tentativa falhou.
+
+Encerre apenas quando:
+- todos os critérios finais estiverem demonstrados; ou
+- não houver mais nenhuma tarefa executável sem uma dependência externa essencial; ou
+- o ambiente da Arena.ai estiver prestes a encerrar a execução e seja necessário persistir o estado.
+
+Se uma dependência externa bloquear parte do projeto, finalize o ciclo com documentação completa e continue outras tarefas independentes. Quando a plataforma permitir nova execução, retome automaticamente de NEXT_TASK.md. Não prometa execução infinita ou em segundo plano se a plataforma não oferecer esse recurso.
+
+**Instrução final de execução:** comece lendo o estado real do repositório. Depois, faça a primeira alteração útil, teste-a, registre o resultado e continue fase por fase. Não entregue apenas um plano. Não declare cliente, servidor, integração, compatibilidade, desempenho ou distribuição como concluídos sem evidências reproduzíveis.
