@@ -91,6 +91,10 @@ Design notes:
   `applyWalk`): the same function the server validates with, so prediction and authority cannot drift
   apart. A rejected prediction triggers a scope refresh, and the authoritative self position from the
   scope packets is adopted (`resyncPosition`).
+- Monsters/NPCs are world objects like characters (`kind: 'npc'`, `typeNumber`), so scope, distance and
+  removal are one code path; only the packet differs: `AddNpcsToScope` (C2 13, 10-byte records) instead
+  of `AddCharactersToScope` (C2 12, 36-byte records). Both are diffed by `syncScopes()`, and scope
+  removals always travel in `MapObjectOutOfScope` (C1 14) regardless of what was removed.
 - Characters are animated with the BMD skeleton: the renderer builds three.js bones from the model's
   bone list, binds the mesh with **identity** bind matrices (vertices are stored in bone space) and,
   every frame, samples the clip through `mu-formats` (`computeBoneWorldMatrices`) to drive both the

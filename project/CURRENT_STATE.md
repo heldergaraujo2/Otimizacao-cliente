@@ -61,12 +61,16 @@ movement with bounds/step/source validation, scope queries), `AccountStore` (in-
 accounts), session state machine (`connected → authenticated → character-selected → in-game`) covering
 login, character list, character selection, character information, map change, client ready, scope,
 walk/broadcast, ping echo, logout, disconnect cleanup and explicit rejection of unsupported packets.
+The world also holds **monsters/NPCs** (`World.spawnNpcs` / `spawnDemoNpcs`, `kind: 'npc'` +
+`typeNumber`): they participate in scope like characters but travel in `AddNpcsToScope` (C2 13,
+10-byte records) instead of `AddCharactersToScope`, decided by `isNpc()` inside the same `syncScopes()`
+diff; removals stay in `MapObjectOutOfScope`.
 
 Evidence:
 
 ```bash
-npm test -w @mu-reengineer/server        # 9/9 world-rule tests
-npm test -w @mu-reengineer/client        # 6/6 integration tests over real sockets
+npm test -w @mu-reengineer/server        # 11/11 world-rule tests (incl. monsters + custom spawns)
+npm test -w @mu-reengineer/client        # 8/8 integration tests over real sockets (incl. monsters)
 ```
 
 Manual end-to-end run (no mocks, real ciphers/counters/framing):
@@ -93,11 +97,27 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
   over node TCP (tests) and over WebSocket (browser).
 - **Renderer (new):** `src/browser/` — `MuRenderer` builds the terrain mesh from ATT/MAP tile
   attributes (water/safe/no-ground colouring plus texture-index shading), places OBJ objects, builds
-  the character mesh from BMD geometry via `extractMeshGeometry`, follows the player with the camera and
-  reports FPS. `main.ts` wires login → character list → selection → client ready → keyboard movement
-  with local prediction → HUD (state, position, FPS, latency, packet/byte counters).
+  the character mesh from BMD geometry via `extractMeshGeometry` with a bone hierarchy and clip
+  playback (`setAction`, `updateAnimation`), follows the player with the camera and reports FPS.
+  Monsters/NPCs arrive as `npcs` events and are drawn as coloured capsules with a marker (`npcCount`),
+  since no art exists for those type numbers yet. `main.ts` wires login → character list → selection →
+  client ready → keyboard movement with local prediction → HUD (state, position, monsters, FPS,
+  latency, packet/byte counters). The session tracks monsters separately (`npcSnapshot()`), so a walk
+  away empties the view through `MapObjectOutOfScope`.
 - **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
   are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
+
+### Monsters/NPCs in the world and in the view — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+`AddNpcsToScope` (C2 13) builder/parser with the reference-verified 10-byte record layout (rotation in
+the **high** nibble, same convention as the walk packets); `World.spawnNpcs`/`spawnDemoNpcs` (5 demo
+spawns around 125/125); `syncScopes()` sends characters and monsters in their own packets from one diff;
+the client tracks them (`npcs` event, `npcSnapshot()`) and the renderer draws them. 4 new tests
+(protocol 1, server 2, client integration 1) and the gateway test now separates players from monsters.
+
+Evidence: `npm test` → **119 tests, 0 failures** (protocol 43, formats 33, client 16, server 11, cli 9,
+gateway 7); manual `node packages/mu-server/dist/main.js --help` shows `--no-npcs` and the ready line
+reports `npcs=yes`.
 
 ### BMD animation and skinning — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 

@@ -19,6 +19,7 @@ import type { Server, Socket } from 'node:net';
 
 import {
   buildAddCharactersToScope,
+  buildAddNpcsToScope,
   buildCharacterInformation,
   buildCharacterList,
   buildGameServerEntered,
@@ -38,12 +39,13 @@ import {
   parseSelectCharacter,
   parseWalkRequest,
   readPacketHeader,
+  type NpcScopeEntry,
   type ScopeCharacter,
 } from '@mu-reengineer/protocol';
 
 import type { Account, AccountStore, StoredCharacter } from './accounts.js';
 import { createSocketTransport } from './net/socket-transport.js';
-import { type World, type WorldCharacter } from './world.js';
+import { isNpc, type World, type WorldCharacter } from './world.js';
 
 export type SessionState = 'connected' | 'authenticated' | 'character-selected' | 'in-game' | 'closed';
 
@@ -370,19 +372,27 @@ export class GameServerSession {
     desired.set(character.id, character);
     for (const other of world.inScope(character.id)) desired.set(other.id, other);
 
-    const added: WorldCharacter[] = [];
+    const addedPlayers: WorldCharacter[] = [];
+    const addedNpcs: WorldCharacter[] = [];
     for (const [id, other] of desired) {
-      if (!this.known.has(id)) added.push(other);
+      if (this.known.has(id)) continue;
+      if (isNpc(other)) addedNpcs.push(other);
+      else addedPlayers.push(other);
     }
     const removed: number[] = [];
     for (const id of this.known.keys()) {
       if (!desired.has(id)) removed.push(id);
     }
 
-    if (added.length > 0) {
+    if (addedPlayers.length > 0) {
       // one packet may carry several entries: the reference encodes a count plus 36-byte records
-      this.send(buildAddCharactersToScope(added.map(toScopeCharacter)));
-      this.server.metrics.scopePackets += added.length;
+      this.send(buildAddCharactersToScope(addedPlayers.map(toScopeCharacter)));
+      this.server.metrics.scopePackets += addedPlayers.length;
+    }
+    if (addedNpcs.length > 0) {
+      // monsters/NPCs travel in their own packet (C2 13), 10-byte records
+      this.send(buildAddNpcsToScope(addedNpcs.map(toNpcScopeEntry)));
+      this.server.metrics.scopePackets += addedNpcs.length;
     }
     if (removed.length > 0) {
       this.send(buildMapObjectOutOfScope(removed));
@@ -416,6 +426,18 @@ export class GameServerSession {
     // the move can have changed who sees whom in both directions
     this.server.syncScopes();
   }
+}
+
+function toNpcScopeEntry(character: WorldCharacter): NpcScopeEntry {
+  return {
+    id: character.id,
+    typeNumber: character.typeNumber ?? 0,
+    currentX: character.x,
+    currentY: character.y,
+    targetX: character.x,
+    targetY: character.y,
+    rotation: character.rotation,
+  };
 }
 
 function toScopeCharacter(character: WorldCharacter): ScopeCharacter {

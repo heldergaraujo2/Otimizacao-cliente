@@ -2,6 +2,45 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 11: monsters/NPCs in the world and in the client's view
+
+**Changes**
+
+- `packages/mu-protocol`: `AddNpcsToScope` (C2 13) builder/parser + `NpcScopeEntry`, and
+  `GAME_CODE.ScopeNpcs = 0x13`. Layout verified twice: `ServerToClientPackets.xml` describes a 10-byte
+  record (Id BE16, TypeNumber BE16, x, y, targetX, targetY, rotation byte, effect-count byte) and the
+  generated `AddNpcsToScope` at `89c8f07` reads the rotation from bits 4..7 of that byte
+  (`GetByteValue(4, 4)`), i.e. the same "rotation high" convention as the walk packets. The test asserts
+  the byte indices (`packet[5]`..`packet[14]`) as well as the round trip.
+- `packages/mu-server`: monsters/NPCs are ordinary world objects (`kind: 'npc'`, `typeNumber`) created by
+  `World.spawnNpcs()` / `spawnDemoNpcs()` (five spawn around 125/125: three Budge Dragons, two Spiders,
+  one Lorencia Guard). `isNpc()` lets `syncScopes()` split newcomers into `AddCharactersToScope`
+  (players, 36-byte records) and `AddNpcsToScope` (monsters, 10-byte records) — one diff, both packets,
+  and `MapObjectOutOfScope` still covers every removal. `startMuServer` spawns the demo population by
+  default (`npcSpawns`, `withDemoNpcs: false` to opt out) and the standalone CLI gained `--no-npcs`.
+- `packages/mu-client`: the session tracks monsters in their own map, emits `npcs`, exposes
+  `npcSnapshot()` and clears them in `clientReady()` — so a walk away empties the view without touching
+  the character list. The renderer draws each monster as a coloured capsule with a marker (no art exists
+  for these type numbers yet), the page wires the `npcs` event into it and the HUD reports the count.
+
+**Evidence**
+
+- `npm test` → **119 tests, 0 failures**: protocol 43, formats 33, client 16, server 11, cli 9, gateway 7.
+- New tests: protocol `npcs in scope follow the reference layout`; server `monsters are world objects
+  with a type number and take part in the scope` and `spawnNpcs accepts a custom population and an empty
+  one`; client integration `monsters are spawned, visible in scope and removed when the player walks
+  away` (asserts 5 monsters in scope at spawn, `npcSnapshot()` = 0 after three 15-step walks west and
+  `scopeRemovals >= 5`); gateway test now looks the player up by name and asserts monsters survive a
+  player disconnect.
+- Manual: `node packages/mu-server/dist/main.js --help` lists `--no-npcs`; the status line reports
+  `npcs=yes/no`.
+
+**Limitations**
+
+- Monster behaviour (movement, AI, attack) is not implemented: they are static spawns. No art: the
+  placeholder capsule is deliberate.
+- `ObjectGotKilled` (C1 17) layout is known but no kill/damage flow exists yet.
+
 ## 2026-10-10 — cycle 10: BMD animation + skinning, OBJ exporter, animated client
 
 **Changes**

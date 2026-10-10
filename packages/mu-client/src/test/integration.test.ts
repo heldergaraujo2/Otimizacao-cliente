@@ -224,6 +224,45 @@ test('leaving the scope box removes the character from the other view, returning
   });
 });
 
+test('monsters are spawned, visible in scope and removed when the player walks away', async () => {
+  await withServer(async (server) => {
+    assert.equal(server.world.all().filter((object) => object.kind === 'npc').length, 5, 'demo population');
+
+    const session = await loginSession(server, 'demo');
+    try {
+      await session.requestCharacterList();
+      await session.selectCharacter('DarkKnight');
+      const characters = await session.clientReady();
+
+      // the spawn area is full of monsters, but only characters come in the character packet
+      assert.deepEqual(characters.map((entry) => entry.name), ['DarkKnight']);
+      const npcs = session.npcSnapshot();
+      assert.equal(npcs.length, 5, 'all demo monsters are inside the 10-tile scope box');
+      assert.ok(npcs.every((npc) => npc.typeNumber > 0), 'every monster carries its type number');
+      assert.ok(npcs.some((npc) => npc.currentX === 132 && npc.currentY === 122), 'positions are the world ones');
+
+      // three 15-step walks west (125 -> 80) leave every monster behind the scope box
+      const removedIds = new Set<number>();
+      session.on('scopeRemoved', (event) => {
+        for (const id of event.objectIds) removedIds.add(id);
+      });
+      for (let i = 0; i < 3; i++) {
+        const outcome = session.walk(new Array(15).fill(6));
+        assert.equal(outcome.ok, true, `walk ${i + 1} must be accepted`);
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
+
+      for (const npc of npcs) {
+        assert.ok(removedIds.has(npc.id), `monster ${npc.id} should have left the view`);
+      }
+      assert.equal(session.npcSnapshot().length, 0, 'the tracked view must drop them too');
+      assert.ok(server.metrics.game.scopeRemovals >= 5);
+    } finally {
+      session.close();
+    }
+  });
+});
+
 test('ping is answered and disconnecting removes the character from the world', async () => {
   await withServer(async (server) => {
     const session = await loginSession(server, 'demo');

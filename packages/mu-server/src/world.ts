@@ -16,6 +16,9 @@ export { DIRECTION_OFFSETS, MAX_WALK_STEPS, MAP_SIZE };
 
 export const DEFAULT_SCOPE_RANGE = 10;
 
+/** What an object in the world is: a player character or a monster/NPC. */
+export type WorldObjectKind = 'player' | 'npc';
+
 export interface WorldCharacter {
   /** Server-assigned object id (u16 on the wire). */
   id: number;
@@ -28,6 +31,24 @@ export interface WorldCharacter {
   level: number;
   appearance: Uint8Array;
   heroState: number;
+  /** Defaults to 'player' — monsters/NPCs are stored in the same map so scope logic stays uniform. */
+  kind?: WorldObjectKind;
+  /** Monster/NPC type number as the client knows it (packet field `TypeNumber`). */
+  typeNumber?: number;
+}
+
+/** True for monsters/NPCs (they travel in `AddNpcsToScope`, players in `AddCharactersToScope`). */
+export function isNpc(object: WorldCharacter): boolean {
+  return object.kind === 'npc';
+}
+
+export interface NpcSpawn {
+  typeNumber: number;
+  name: string;
+  x: number;
+  y: number;
+  rotation?: number;
+  mapId?: number;
 }
 
 export interface MoveResult {
@@ -45,9 +66,42 @@ export class World {
 
   add(character: Omit<WorldCharacter, 'id'>): WorldCharacter {
     const id = this.nextId++;
-    const full: WorldCharacter = { ...character, id };
+    const full: WorldCharacter = { ...character, kind: character.kind ?? 'player', id };
     this.characters.set(id, full);
     return full;
+  }
+
+  /**
+   * Spawns monsters/NPCs around the map. They are ordinary world objects (so scope, distance and
+   * removal work identically for them) which differ only in the packet used to describe them.
+   */
+  spawnNpcs(spawns: readonly NpcSpawn[]): WorldCharacter[] {
+    return spawns.map((spawn) =>
+      this.add({
+        account: '',
+        name: spawn.name,
+        mapId: spawn.mapId ?? 0,
+        x: spawn.x,
+        y: spawn.y,
+        rotation: spawn.rotation ?? 0,
+        level: 1,
+        appearance: new Uint8Array(18),
+        heroState: 0,
+        kind: 'npc',
+        typeNumber: spawn.typeNumber,
+      }),
+    );
+  }
+
+  /** The default demo population: a handful of monsters near the spawn point (map 0, 125/125). */
+  spawnDemoNpcs(): WorldCharacter[] {
+    return this.spawnNpcs([
+      { typeNumber: 0x0001, name: 'Budge Dragon', x: 132, y: 122, rotation: 5 },
+      { typeNumber: 0x0002, name: 'Budge Dragon', x: 118, y: 130, rotation: 1 },
+      { typeNumber: 0x0003, name: 'Spider', x: 129, y: 131, rotation: 7 },
+      { typeNumber: 0x0004, name: 'Spider', x: 121, y: 119, rotation: 3 },
+      { typeNumber: 0x0100, name: 'Guard (Lorencia)', x: 124, y: 126, rotation: 4 },
+    ]);
   }
 
   remove(id: number): boolean {

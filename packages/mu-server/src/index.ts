@@ -15,11 +15,21 @@ import type { ServerListEntry } from '@mu-reengineer/protocol';
 import { AccountStore } from './accounts.js';
 import { attachConnectServer, type ConnectServerMetrics } from './connect-server.js';
 import { GameServer } from './game-server.js';
-import { World } from './world.js';
+import { World, type NpcSpawn } from './world.js';
 
 export { AccountStore, type Account, type StoredCharacter } from './accounts.js';
 export { GameServer, GameServerSession, type GameServerMetrics, type SessionState } from './game-server.js';
-export { World, DIRECTION_OFFSETS, MAP_SIZE, MAX_WALK_STEPS, type WorldCharacter, type MoveResult } from './world.js';
+export {
+  World,
+  DIRECTION_OFFSETS,
+  MAP_SIZE,
+  MAX_WALK_STEPS,
+  isNpc,
+  type MoveResult,
+  type NpcSpawn,
+  type WorldCharacter,
+  type WorldObjectKind,
+} from './world.js';
 export { DEFAULT_CHARACTER_APPEARANCE } from './appearance.js';
 export { createSocketTransport } from './net/socket-transport.js';
 
@@ -37,6 +47,9 @@ export interface MuServerOptions {
   serverList?: ServerListEntry[];
   /** Only used when no accounts are supplied: adds the demo accounts. */
   withDemoAccounts?: boolean;
+  /** Monsters/NPCs to spawn (defaults to the demo population; pass [] for an empty world). */
+  npcSpawns?: readonly NpcSpawn[];
+  withDemoNpcs?: boolean;
   log?: (message: string) => void;
 }
 
@@ -65,6 +78,9 @@ export async function startMuServer(options: MuServerOptions = {}): Promise<MuSe
   const advertiseHost = options.advertiseHost ?? '127.0.0.1';
   const xor32 = options.xor32 ?? true;
   const world = new World();
+  const npcSpawns = options.npcSpawns ?? (options.withDemoNpcs === false ? [] : undefined);
+  if (npcSpawns) world.spawnNpcs(npcSpawns);
+  else if (options.withDemoNpcs !== false) world.spawnDemoNpcs();
   const accounts = options.accounts ?? (options.withDemoAccounts === false ? new AccountStore() : AccountStore.withDemoAccounts());
 
   const gameServerSocket = createServer();

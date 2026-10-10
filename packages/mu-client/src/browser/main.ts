@@ -74,6 +74,7 @@ function updateHud(): void {
     `framing/decrypt errors: ${session?.metrics.framingRejects ?? 0} / ${session?.metrics.decryptErrors ?? 0}`,
     `terrain       : ${renderer.stats.width}x${renderer.stats.height} tiles (${renderer.stats.terrainSource}), water ${renderer.stats.waterTiles}, safe ${renderer.stats.safeTiles}`,
     `objects       : ${renderer.stats.objects}`,
+    `monsters/NPCs : ${renderer.npcCount}`,
     `model         : ${renderer.stats.meshVertices} vertices / ${renderer.stats.meshTriangles} triangles` +
       (renderer.stats.bones > 0
         ? `, ${renderer.stats.bones} bones / ${renderer.stats.actions} actions (action ${renderer.animation.action}, key ${renderer.animation.key.toFixed(1)})`
@@ -151,6 +152,11 @@ async function start(username: string, password: string): Promise<void> {
     }
   });
   session.on('walked', (event) => renderer.setTarget(event.objectId, event.targetX, event.targetY));
+  session.on('npcs', (npcs) => {
+    for (const npc of npcs) {
+      renderer.addNpc(npc.id, npc.typeNumber, npc.currentX, npc.currentY, npc.rotation);
+    }
+  });
   session.on('scopeRemoved', (event) => {
     for (const objectId of event.objectIds) {
       renderer.removeCharacter(objectId);

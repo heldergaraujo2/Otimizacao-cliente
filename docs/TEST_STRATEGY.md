@@ -15,10 +15,12 @@ as `PENDENTE DE VALIDAÇÃO HUMANA` — never as approved.
 
 | Suite | Command | Result |
 | --- | --- | --- |
-| Wire protocol | `npm test -w @mu-reengineer/protocol` | **35/35 pass** — framing (C1/C2/C3/C4), assembler edge cases, XOR3/XOR32, SimpleModulus vectors and round-trips, connection pipeline, packet builders/parsers |
-| Resource formats | `npm test -w @mu-reengineer/formats` | **22/22 pass** — FileCryptor/BUX/LEA/ModulusCryptor, BMD v0/v12/v15, OZT/OZB/OZJ/TGA/DDS, ATT/MAP/OBJ, PNG, malformed-input rejections |
+| Wire protocol | `npm test -w @mu-reengineer/protocol` | **43/43 pass** — framing (C1/C2/C3/C4), assembler edge cases, XOR3/XOR32, SimpleModulus vectors and round-trips, connection pipeline, packet builders/parsers (incl. byte-level assertions for the walk nibbles, `MapObjectOutOfScope` and `AddNpcsToScope`) |
+| Resource formats | `npm test -w @mu-reengineer/formats` | **33/33 pass** — FileCryptor/BUX/LEA/ModulusCryptor, BMD v0/v12/v15, OZT/OZB/OZJ/TGA/DDS, ATT/MAP/OBJ, PNG, malformed-input rejections |
+| Server rules | `npm test -w @mu-reengineer/server` | **11/11 pass** — direction table, walk validation (bounds/steps/source), scope queries, removal, monster spawns |
+| Gateway | `npm test -w @mu-reengineer/gateway` | **7/7 pass** — session through the WebSocket bridge, `/health`, per-connection isolation, `/assets/` byte-exactness, traversal refusal |
 | Golden vectors | part of the protocol suite | byte-exact replay of 4 OpenMU-generated vectors (MIT), including `C3 185→255` and `C4 3000→4128` |
-| CLI (`tools/mu-cli`) | `npm test -w @mu-reengineer/cli` | **8/8 pass** — disk round-trip of all 10 fixtures, inspection of every generated format, PNG export, directory scan, packet decoding (login credentials recovered through XOR3), and the built CLI spawned as a child process |
+| CLI (`tools/mu-cli`) | `npm test -w @mu-reengineer/cli` | **9/9 pass** — disk round-trip of all 10 fixtures, inspection of every generated format, PNG export, directory scan, packet decoding (login credentials recovered through XOR3), and the built CLI spawned as a child process |
 
 ## Level 3 — local integration
 
@@ -28,8 +30,10 @@ enter game → walk → disconnect), asserting packets and connection metrics.
 server (TCP listeners), spawns real client sessions and asserts: connect-server handshake, rejected
 credentials, successful login, character list, character selection, map change, client-ready/scope,
 server-authoritative movement (accepted **and** rejected), cross-client scope broadcast, ping echo and
-disconnect cleanup (`npm test -w @mu-reengineer/client` → 6/6). A profile-mismatch test proves that a
-client without XOR32 cannot authenticate (the server drops it and counts the failure).
+disconnect cleanup (`npm test -w @mu-reengineer/client` → 8/8). A profile-mismatch test proves that a
+client without XOR32 cannot authenticate (the server drops it and counts the failure), and the monster
+test asserts that the five demo spawns reach the client through `AddNpcsToScope` and leave the view
+through `MapObjectOutOfScope` after a walk away.
 
 Already covered at this level: the CLI spawns real processes, writes fixtures to disk and re-parses
 them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence recorded in

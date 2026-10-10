@@ -20,6 +20,7 @@ import {
   buildLoginResponse,
   buildLogOut,
   buildMapChanged,
+  buildAddNpcsToScope,
   buildMapObjectOutOfScope,
   buildObjectWalked,
   buildPing,
@@ -34,6 +35,7 @@ import {
   parseLoginLongPassword,
   parseLoginResponse,
   parseLogOut,
+  parseAddNpcsToScope,
   parseMapChanged,
   parseMapObjectOutOfScope,
   parseObjectWalked,
@@ -235,6 +237,42 @@ test('object walked round trip (server -> client)', () => {
   const asymmetric = parseObjectWalked(buildObjectWalked(1, 2, 3, 7, [0, 1]));
   assert.equal(asymmetric.targetRotation, 7);
   assert.equal(asymmetric.stepCount, 2);
+});
+
+test('npcs in scope follow the reference layout', () => {
+  const packet = buildAddNpcsToScope([
+    { id: 300, typeNumber: 0x0102, currentX: 130, currentY: 121, targetX: 131, targetY: 122, rotation: 5 },
+    { id: 301, typeNumber: 0x0203, currentX: 1, currentY: 2, targetX: 1, targetY: 2, rotation: 0 },
+  ]);
+  // C2 header = prefix + big-endian size + code, so the code is at index 3 and the count at index 4
+  assert.equal(packet[0], 0xc2);
+  assert.equal(packet[3], 0x13, 'code 13');
+  assert.equal(packet[4], 2, 'count');
+  assert.equal(packet[5], 0x01, 'first record, id high byte (300)');
+  assert.equal(packet[6], 0x2c, 'first record, id low byte');
+  assert.equal(packet[7], 0x01, 'type number high byte');
+  assert.equal(packet[8], 0x02, 'type number low byte');
+  assert.equal(packet[9], 130);
+  assert.equal(packet[10], 121);
+  assert.equal(packet[11], 131);
+  assert.equal(packet[12], 122);
+  assert.equal(packet[13], 5 << 4, 'rotation lives in the high nibble');
+  assert.equal(packet[14], 0, 'effect count');
+  assert.equal(packet.length, 4 + 1 + 2 * 10);
+
+  const parsed = parseAddNpcsToScope(packet);
+  assert.equal(parsed.npcs.length, 2);
+  assert.deepEqual(parsed.npcs[0], {
+    id: 300,
+    typeNumber: 0x0102,
+    currentX: 130,
+    currentY: 121,
+    targetX: 131,
+    targetY: 122,
+    rotation: 5,
+  });
+  assert.equal(parsed.npcs[1]!.rotation, 0);
+  assert.deepEqual(parseAddNpcsToScope(buildAddNpcsToScope([])).npcs, []);
 });
 
 test('map object out of scope follows the reference layout', () => {

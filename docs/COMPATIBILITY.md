@@ -30,7 +30,13 @@ Builders **and** parsers exist and are tested for:
 | ConnectServer | `F4 06` server list (request/response), `F4 03` connection info (request/response) |
 | Login | `F1 01` login (long password form) + response, `F1 00` GameServerEntered, `F1 02` logout |
 | Character | `F3 00` character list (34-byte entries), `F3 03` CharacterInformation (69 bytes on the wire), `F3 12` client ready |
-| Play | `1C 0F` MapChanged (10 bytes), `12` AddCharactersToScope, `D4` Walk request, `0D` ServerMessage, `0F` Weather, `1C` EnterGate, `30` TalkToNpc |
+| Play | `1C 0F` MapChanged (10 bytes), `12` AddCharactersToScope, `13` AddNpcsToScope, `14` MapObjectOutOfScope, `D4` Walk request, `11` ObjectWalked, `0D` ServerMessage, `F3 12` client ready |
+
+`AddNpcsToScope` (C2 13) record — verified against `ServerToClientPackets.xml` and the generated
+`AddNpcsToScope` at `89c8f07`: `[4]` count, then per monster `Id` (BE16), `TypeNumber` (BE16),
+`CurrentPositionX`, `CurrentPositionY`, `TargetPositionX`, `TargetPositionY`, one byte whose **high**
+nibble is the rotation, and one byte with the effect count (4 bits). No name, appearance or effects —
+10 bytes per monster, against 36 for a character.
 
 Confirmed offsets (wire size, not the maximum declared by the reference):
 LoginLongPassword 59 B (username@4, password@14, tick@34 BE32, version@38, serial@43);

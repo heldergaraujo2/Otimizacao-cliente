@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { DIRECTION_OFFSETS, MAP_SIZE, MAX_WALK_STEPS, World } from '../world.js';
+import { DIRECTION_OFFSETS, isNpc, MAP_SIZE, MAX_WALK_STEPS, World } from '../world.js';
 
 const appearance = new Uint8Array(18);
 
@@ -95,4 +95,36 @@ test('removing a character clears it from the world', () => {
   assert.equal(world.get(character.id), undefined);
   assert.equal(world.byAccount('demo'), undefined);
   assert.deepEqual(world.all(), []);
+});
+
+test('monsters are world objects with a type number and take part in the scope', () => {
+  const { world, character } = worldWithPlayer(127, 124);
+  const npcs = world.spawnDemoNpcs();
+
+  assert.equal(npcs.length, 5);
+  assert.ok(npcs.every((npc) => npc.kind === 'npc' && isNpc(npc)));
+  assert.equal(isNpc(character), false, 'plain world characters stay players');
+  assert.deepEqual(
+    npcs.map((npc) => npc.typeNumber),
+    [0x0001, 0x0002, 0x0003, 0x0004, 0x0100],
+  );
+  assert.ok(npcs.every((npc) => npc.id > character.id), 'ids come from the same sequence');
+
+  const visible = world.inScope(character.id);
+  assert.equal(visible.length, 5, 'the spawn point sees the whole demo population');
+  assert.deepEqual(new Set(visible.map((npc) => npc.id)), new Set(npcs.map((npc) => npc.id)));
+
+  // walking far away takes them out of the view without deleting them from the world
+  const far = world.add({ account: 'b', name: 'Far', mapId: 0, x: 20, y: 20, rotation: 0, level: 1, appearance, heroState: 0 });
+  assert.deepEqual(world.inScope(far.id), []);
+  assert.equal(world.all().length, 7, 'monsters are never removed by scope logic');
+});
+
+test('spawnNpcs accepts a custom population and an empty one', () => {
+  const world = new World();
+  const npcs = world.spawnNpcs([{ typeNumber: 0x00ff, name: 'Custom', x: 1, y: 2, rotation: 5 }]);
+  assert.equal(npcs.length, 1);
+  assert.equal(npcs[0]!.rotation, 5);
+  assert.equal(npcs[0]!.mapId, 0, 'map defaults to 0');
+  assert.deepEqual(world.spawnNpcs([]), []);
 });

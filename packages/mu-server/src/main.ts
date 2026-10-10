@@ -8,7 +8,7 @@
  *
  * Usage:
  *   mu-server [--host 0.0.0.0] [--connect-port 44405] [--game-port 55901]
- *             [--advertise-host 127.0.0.1] [--no-xor32] [--no-demo-accounts] [--status-json]
+ *             [--advertise-host 127.0.0.1] [--no-xor32] [--no-demo-accounts] [--no-npcs] [--status-json]
  *
  * Ports default to 0 (the OS picks free ones) so the process is usable in tests and never fights for a
  * privileged port; the actual ports are always printed, and with `--status-json` as a single JSON line
@@ -24,6 +24,7 @@ export interface ServerCliOptions {
   advertiseHost?: string;
   xor32: boolean;
   withDemoAccounts: boolean;
+  withDemoNpcs: boolean;
   statusJson: boolean;
 }
 
@@ -57,6 +58,7 @@ export function parseServerArgs(argv: string[]): ServerCliOptions {
     advertiseHost: text('advertise-host'),
     xor32: flags.get('no-xor32') === undefined,
     withDemoAccounts: flags.get('no-demo-accounts') === undefined,
+    withDemoNpcs: flags.get('no-npcs') === undefined,
     statusJson: flags.get('status-json') !== undefined,
   };
 }
@@ -72,9 +74,11 @@ export function serverUsage(): string {
     '  --advertise-host <addr>  address handed out to clients (default: the bind address)',
     '  --no-xor32               do not apply the XOR32 stream mask on the game connection',
     '  --no-demo-accounts       start with an empty account store',
+    '  --no-npcs                do not spawn the demo monsters/NPCs',
     '  --status-json            print one JSON status line on stdout once listening',
     '',
     'demo accounts (unless --no-demo-accounts): demo/demo -> DarkKnight, alt/alt -> ElfArcher',
+    'the world starts with five monsters/NPCs around the spawn point unless --no-npcs is given',
     '',
   ].join('\n');
 }
@@ -103,13 +107,14 @@ export async function serverMain(argv: string[]): Promise<number> {
     advertiseHost: options.advertiseHost,
     xor32: options.xor32,
     withDemoAccounts: options.withDemoAccounts,
+    withDemoNpcs: options.withDemoNpcs,
     log: (message) => console.log(`[server] ${message}`),
   });
 
   console.log(statusLine(server));
   console.log(
     `[server] ready — connect ${server.host}:${server.connectPort}, game ${server.host}:${server.gamePort} ` +
-      `(xor32=${options.xor32}, demo accounts=${options.withDemoAccounts ? 'yes' : 'no'})`,
+      `(xor32=${options.xor32}, demo accounts=${options.withDemoAccounts ? 'yes' : 'no'}, npcs=${options.withDemoNpcs ? 'yes' : 'no'})`,
   );
 
   const shutdown = (signal: string): void => {

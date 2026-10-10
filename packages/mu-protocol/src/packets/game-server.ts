@@ -21,6 +21,7 @@ export const GAME_CODE = {
   MapChanged: 0x1c,
   EnterGate: 0x1c,
   ScopeCharacters: 0x12,
+  ScopeNpcs: 0x13,
   MapObjectOutOfScope: 0x14,
   ObjectWalked: 0xd4,
   Login: 0xf1,
@@ -538,6 +539,60 @@ export function parseMapObjectOutOfScope(packet: Uint8Array): { objectIds: numbe
   const objectIds: number[] = [];
   for (let i = 0; i < count; i++) objectIds.push(reader.u16be());
   return { objectIds };
+}
+
+export interface NpcScopeEntry {
+  id: number;
+  typeNumber: number;
+  currentX: number;
+  currentY: number;
+  targetX: number;
+  targetY: number;
+  rotation: number;
+}
+
+/**
+ * C2 13 (AddNpcsToScope): [4] npc count, then 10-byte records without effects.
+ *
+ * Record layout verified against the reference (ServerToClientPackets.xml + the generated
+ * `AddNpcsToScope`: Id and TypeNumber are big-endian uint16, then x/y/targetX/targetY, rotation in the
+ * **high** nibble of byte 8 and the effect count in byte 9).
+ */
+export function buildAddNpcsToScope(npcs: NpcScopeEntry[]): Uint8Array {
+  const writer = new ByteWriter(5 + npcs.length * 10);
+  writer.u8(npcs.length & 0xff);
+  for (const npc of npcs) {
+    writer.u16be(npc.id);
+    writer.u16be(npc.typeNumber);
+    writer.u8(npc.currentX);
+    writer.u8(npc.currentY);
+    writer.u8(npc.targetX);
+    writer.u8(npc.targetY);
+    writer.u8((npc.rotation & 0x0f) << 4);
+    writer.u8(0); // effect count
+  }
+  return createPacket(0xc2, GAME_CODE.ScopeNpcs, undefined, writer.toUint8Array());
+}
+
+export function parseAddNpcsToScope(packet: Uint8Array): { npcs: NpcScopeEntry[] } {
+  const header = readPacketHeader(packet);
+  if (header.code !== GAME_CODE.ScopeNpcs) throw new Error('not an add-npcs-to-scope packet');
+  const reader = new ByteReader(packet, 4);
+  const count = reader.u8();
+  const npcs: NpcScopeEntry[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = reader.u16be();
+    const typeNumber = reader.u16be();
+    const currentX = reader.u8();
+    const currentY = reader.u8();
+    const targetX = reader.u8();
+    const targetY = reader.u8();
+    const rotation = (reader.u8() >> 4) & 0x0f;
+    const effectCount = reader.u8();
+    for (let e = 0; e < effectCount; e++) reader.u8();
+    npcs.push({ id, typeNumber, currentX, currentY, targetX, targetY, rotation });
+  }
+  return { npcs };
 }
 
 /** C1 0D (ServerMessage): [3] type, [4..] ASCII message. */

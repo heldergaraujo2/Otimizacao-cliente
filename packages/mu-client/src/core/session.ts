@@ -17,6 +17,7 @@ import {
   MuConnection,
   packetName,
   parseAddCharactersToScope,
+  parseAddNpcsToScope,
   parseCharacterInformation,
   parseCharacterList,
   parseGameServerEntered,
@@ -29,6 +30,7 @@ import {
   readPacketHeader,
   type CharacterInformation,
   type CharacterListEntry,
+  type NpcScopeEntry,
   type ScopeCharacter,
   type WalkOutcome,
 } from '@mu-reengineer/protocol';
@@ -64,6 +66,7 @@ export interface PlayerState {
 
 export interface SessionEvents {
   scope: ScopeCharacter[];
+  npcs: NpcScopeEntry[];
   scopeRemoved: { objectIds: number[] };
   walked: { objectId: number; targetX: number; targetY: number; rotation: number };
   serverMessage: { type: number; message: string };
@@ -82,6 +85,7 @@ export class ClientSession {
   private readonly waiters: { predicate: (packet: Uint8Array) => boolean; resolve: (packet: Uint8Array) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }[] = [];
   private readonly handlers = new Map<keyof SessionEvents, Set<Handler<never>>>();
   private readonly scope = new Map<number, ScopeCharacter>();
+  private readonly npcs = new Map<number, NpcScopeEntry>();
   private readonly defaultTimeoutMs: number;
   private closedError?: Error;
 
@@ -201,6 +205,7 @@ export class ClientSession {
   /** Tells the server we finished loading the map and waits for the first scope packets. */
   async clientReady(quietMs = 120): Promise<ScopeCharacter[]> {
     this.scope.clear();
+    this.npcs.clear();
     this.requestScopeRefresh();
     const scope: ScopeCharacter[] = [];
     for (;;) {
@@ -294,6 +299,11 @@ export class ClientSession {
     return this.scope.size;
   }
 
+  /** Monsters/NPCs currently visible (they arrive in their own packet, `AddNpcsToScope`). */
+  npcSnapshot(): NpcScopeEntry[] {
+    return [...this.npcs.values()];
+  }
+
   // ------------------------------------------------------------------ events
 
   private dispatch(packet: Uint8Array): void {
@@ -322,9 +332,18 @@ export class ClientSession {
       this.emit('scope', characters);
       return;
     }
+    if (header.code === GAME_CODE.ScopeNpcs) {
+      const { npcs } = parseAddNpcsToScope(packet);
+      for (const npc of npcs) this.npcs.set(npc.id, npc);
+      this.emit('npcs', npcs);
+      return;
+    }
     if (header.code === GAME_CODE.MapObjectOutOfScope) {
       const { objectIds } = parseMapObjectOutOfScope(packet);
-      for (const objectId of objectIds) this.scope.delete(objectId);
+      for (const objectId of objectIds) {
+        this.scope.delete(objectId);
+        this.npcs.delete(objectId);
+      }
       this.emit('scopeRemoved', { objectIds });
       return;
     }

@@ -30,9 +30,13 @@ test('gateway bridges a WebSocket session to the TCP game server', async () => {
     const scope = await session.clientReady();
     assert.equal(scope.length, 1);
 
+    // the demo world contains monsters too, so look the player character up by name
+    const player = () => server.world.all().find((object) => object.name === 'DarkKnight');
+    assert.equal(player()?.x, 125);
+
     session.walk([2, 2]);
     await new Promise((resolve) => setTimeout(resolve, 200));
-    assert.equal(server.world.all()[0]?.x, 127);
+    assert.equal(player()?.x, 127);
 
     const pong = await session.ping();
     assert.ok(pong.tickCount > 0);
@@ -40,7 +44,8 @@ test('gateway bridges a WebSocket session to the TCP game server', async () => {
 
     session.close();
     await new Promise((resolve) => setTimeout(resolve, 150));
-    assert.equal(server.world.all().length, 0, 'disconnect must travel through the gateway as well');
+    assert.equal(server.world.all().filter((object) => object.kind === 'player').length, 0, 'disconnect must travel through the gateway as well');
+    assert.equal(server.world.all().filter((object) => object.kind === 'npc').length, 5, 'monsters stay');
     assert.ok(gateway.connections >= 1);
   } finally {
     await gateway.close();

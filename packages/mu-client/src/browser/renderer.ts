@@ -87,6 +87,7 @@ export class MuRenderer {
   private readonly characterRoot = new THREE.Group();
   private readonly terrainRoot = new THREE.Group();
   private readonly characters = new Map<number, CharacterView>();
+  private readonly npcIds = new Set<number>();
   private readonly clock = new THREE.Clock();
   private readonly tileSpan: number;
   private model?: BmdModel;
@@ -271,11 +272,54 @@ export class MuRenderer {
     return view;
   }
 
+  /**
+   * Adds (or moves) a monster/NPC. Monsters are drawn as coloured capsules when no model is available
+   * for their type — the important part for this phase is that the scope content is visible and
+   * distinguishable from players, not the exact art.
+   */
+  addNpc(id: number, typeNumber: number, x: number, y: number, rotation = 0): CharacterView {
+    const existing = this.characters.get(id);
+    if (existing) {
+      existing.targetX = x;
+      existing.targetY = y;
+      return existing;
+    }
+    const group = new THREE.Group();
+    group.name = `npc-${typeNumber}-${id}`;
+    const palette = [0xb04a4a, 0x4a7ab0, 0x8a8a4a, 0x6a4a8a, 0x4a8a6a];
+    const body = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.45, 1.1),
+      new THREE.MeshStandardMaterial({ color: palette[typeNumber % palette.length]!, roughness: 0.7 }),
+    );
+    body.rotation.x = -Math.PI / 2; // model space is Z-up, like the characters
+    body.name = 'model';
+    group.add(body);
+    const label = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14),
+      new THREE.MeshStandardMaterial({ color: 0xffcc55, emissive: 0x553300 }),
+    );
+    label.position.set(0, 1.9, 0);
+    group.add(label);
+
+    group.position.set(x, 0, y);
+    group.rotation.z = (rotation * Math.PI) / 4; // the model root is rotated, so the yaw lives on Z
+    const view: CharacterView = { id, mesh: group, x, y, targetX: x, targetY: y };
+    this.characterRoot.add(group);
+    this.characters.set(id, view);
+    this.npcIds.add(id);
+    return view;
+  }
+
+  get npcCount(): number {
+    return this.npcIds.size;
+  }
+
   removeCharacter(id: number): void {
     const view = this.characters.get(id);
     if (!view) return;
     this.characterRoot.remove(view.mesh);
     this.characters.delete(id);
+    this.npcIds.delete(id);
   }
 
   setTarget(id: number, x: number, y: number): void {
