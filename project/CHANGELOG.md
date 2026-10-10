@@ -2,6 +2,59 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 4: `packages/mu-server` + `packages/mu-client` headless core (Level 3/4)
+
+**Changes**
+
+- New workspace `packages/mu-server` (`@mu-reengineer/server`): TCP connect server + game server,
+  `World` with server-authoritative movement (bounds, step count, declared source position, scope
+  queries), in-memory `AccountStore` with two development accounts, and a session state machine
+  covering login → character list → selection → character information → map change → client ready →
+  scope → walk/broadcast → ping → logout → disconnect cleanup. Unsupported packets are answered with a
+  server message and counted, never ignored.
+- New workspace `packages/mu-client` (`@mu-reengineer/client`): headless core — `ClientSession`
+  (typed commands, buffered `waitFor`, event streams for scope/walked/server messages) and the
+  ConnectServer client (`fetchServerList`, `fetchConnectionInfo`). No rendering dependency, so the
+  session runs in tests.
+- Root `build` now compiles workspaces in dependency order (protocol → formats → server → client →
+  cli), which also fixes the client's type dependency on the server package.
+- `mu-protocol`: nothing changed in this cycle.
+
+**Tests executed**
+
+| Command | Result |
+| --- | --- |
+| `npm run build` | clean (5 workspaces + tools) |
+| `npm test` | protocol 35/35 · formats 22/22 · server 9/9 · client 6/6 · cli 8/8 — **80/80, 0 fail** |
+
+Integration coverage (real sockets, real ciphers and counters, no mocks): connect-server server list
+and connection info; wrong password and unknown account rejected; full login/selection/map-change/scope
+flow; movement accepted and **rejected** (wrong source position) with the world unchanged on rejection;
+`ObjectWalked` broadcast to the other character in scope and **not** echoed to the walker; ping echo;
+disconnect removes the character from the world; a client without the XOR32 profile is dropped and the
+failure is visible in the metrics.
+
+**Manual end-to-end run (recorded)**
+
+```
+server list : [{"serverId":0,"loadPercentage":0}]
+game server : {"ipAddress":"127.0.0.1","port":37505}
+login       : 0
+characters  : [ 'DarkKnight' ]
+map changed : {"isMapChange":true,"mapNumber":0,"x":125,"y":125,"rotation":2}
+scope       : [ 'DarkKnight' ]
+world after 3 east steps: [{"name":"DarkKnight","x":128,"y":125}]
+```
+
+**Notes / limitations**
+
+1. The 8-way movement encoding in `world.ts` is our documented interpretation; authority checks hold
+   regardless, but the numbering must be validated against a real client (`docs/COMPATIBILITY.md` §6).
+2. The game session requires the XOR32 profile on both ends (asserted by test); OpenMU HEAD only wires
+   XOR32 for the chat server — `xor32: false` exists for experimentation.
+3. No persistence, no scope-removal packet on disconnect yet, and the character stat block is minimal
+   (enough for the slice, not for gameplay).
+
 ## 2026-10-10 — cycle 3: `tools/mu-cli` (inspection, export, scan, packet decoding)
 
 **Changes**
@@ -30,7 +83,7 @@ Concrete changes with the evidence that proves them. Newest first.
 
 **Notes / limitations**
 
-1. `inspect` prints ATT tile counts as `256x256 (header reports 255x255)`: the format stores 255 in the
+1. (cycle 3) `inspect` prints ATT tile counts as `256x256 (header reports 255x255)`: the format stores 255 in the
    header while the attribute grid holds 256×256 tiles — both numbers are shown on purpose.
 2. `scan` classifies by extension + signature; files with unknown extensions are only reported, never
    guessed. Unknown formats exit with code 2 so scripts can detect them.

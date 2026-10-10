@@ -54,9 +54,42 @@ Limits: the LEA-256 fixture encryptor is an algebraic inverse of the decryption 
 `src/testing/fixtures.ts`) — proven only round-trip; real v15 assets were not available to validate
 against. No real `.bmd/.ozt/.att` file has been parsed yet (blocked by data availability, see below).
 
-### `packages/mu-server` — NÃO INICIADO
+### `packages/mu-server` — CONCLUÍDO COM EVIDÊNCIAS (vertical slice)
 
-### `packages/mu-client` — NÃO INICIADO
+Implemented: TCP listeners for the connect server and the game server, `World` (authoritative
+movement with bounds/step/source validation, scope queries), `AccountStore` (in-memory, two demo
+accounts), session state machine (`connected → authenticated → character-selected → in-game`) covering
+login, character list, character selection, character information, map change, client ready, scope,
+walk/broadcast, ping echo, logout, disconnect cleanup and explicit rejection of unsupported packets.
+
+Evidence:
+
+```bash
+npm test -w @mu-reengineer/server        # 9/9 world-rule tests
+npm test -w @mu-reengineer/client        # 6/6 integration tests over real sockets
+```
+
+Manual end-to-end run (no mocks, real ciphers/counters/framing):
+
+```
+server list : [{"serverId":0,"loadPercentage":0}]
+game server : {"ipAddress":"127.0.0.1","port":37505}
+login       : 0                     (LoginResult.Okay)
+characters  : [ 'DarkKnight' ]
+map changed : {"isMapChange":true,"mapNumber":0,"x":125,"y":125,"rotation":2}
+scope       : [ 'DarkKnight' ]
+world after 3 east steps: [{"name":"DarkKnight","x":128,"y":125}]
+metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":1,
+               "walksAccepted":1,"walksRejected":0,"scopePackets":1,
+               "unsupportedPackets":0,"disconnects":0}
+```
+
+### `packages/mu-client` — EM ANDAMENTO (headless core done, renderer not started)
+
+Implemented and tested: `ClientSession` (login, character list, selection, client ready, walk, ping,
+event streams for scope/walked/server message, buffered `waitFor`) and the ConnectServer client
+(`fetchServerList`, `fetchConnectionInfo`). The browser renderer (three.js) is **NÃO INICIADO** — the
+core deliberately has no rendering dependency so Levels 3/4 can run headless.
 
 ### `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS
 

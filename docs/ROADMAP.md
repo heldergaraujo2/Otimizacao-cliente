@@ -11,12 +11,12 @@ A phase without executed evidence is never "done".
 | 2 | Season 20 data acquisition/inspection | BLOQUEADO EXTERNEMENTE | download host unreachable from the sandbox (curl `HTTP 000`); user must supply data |
 | 3 | Build the reference client (`xulek/muonline`) | BLOQUEADO EXTERNAMENTE | needs .NET 10 SDK + Windows/MonoGame; no `dotnet` here |
 | 4 | Resource tooling (BMD/OZ*/terrain readers, exporters) | EM ANDAMENTO | `mu-formats` 22/22 + `tools/mu-cli` 8/8 tests green, fixture disk round-trip 10/10; real-data conformance still blocked with Fase 2 |
-| 5 | Optimised client architecture | EM ANDAMENTO | architecture + decisions documented (`docs/ARCHITECTURE.md`, `project/DECISIONS.md`); implementation starts with the headless core |
+| 5 | Optimised client architecture | EM ANDAMENTO | architecture + decisions documented; headless core implemented and integration-tested (`packages/mu-client`); renderer layer not started |
 | 6 | Resource pipeline (decrypt → decode → cache → render-ready) | EM ANDAMENTO | ciphers/readers done and tested on fixtures; pipeline integration into the client pending |
 | 7 | Renderer and 3D scene | NÃO INICIADO | requires Fase 6 + GPU validation (Level 6/7 human) |
 | 8 | Characters and animations | NÃO INICIADO | `extractMeshGeometry` + euler→quaternion exist and are tested; scene/animation graph pending |
 | 9 | Maps and environment | NÃO INICIADO | ATT/MAP/OBJ readers tested; terrain renderer pending |
-| 10 | Network and server (client ⇄ server integration) | EM ANDAMENTO | `mu-protocol` 35/35 tests incl. golden vectors; `mu-server` + integration test = Priority 2 in `NEXT_TASK.md` |
+| 10 | Network and server (client ⇄ server integration) | EM ANDAMENTO | `mu-protocol` 35/35; `mu-server` 9/9 world rules + **6/6 real-socket integration tests** (login, characters, map change, scope, movement authority, ping, disconnect, XOR32 profile mismatch); wider packet coverage and reconnect still open |
 | 11 | Game systems (characters, inventory, skills, NPCs, chat) | NÃO INICIADO | vertical slice defined by the packet set already implemented |
 | 12 | Performance (measurement + optimisation) | EM ANDAMENTO | protocol/format benchmarks recorded in `docs/PERFORMANCE.md`; renderer metrics `PENDENTE DE VALIDAÇÃO HUMANA` |
 | 13 | Validation and distribution | NÃO INICIADO | needs 5–12 plus licence/usage documentation final review |

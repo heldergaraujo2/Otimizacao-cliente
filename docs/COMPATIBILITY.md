@@ -49,7 +49,28 @@ CharacterInformation 69 B; MapChanged 10 B.
   incompatible until implemented and tested; the server must reject unsupported packets explicitly
   rather than half-handle them.
 
-## 5. Honest status
+## 5. Server-side slice (implemented)
+
+`packages/mu-server` implements both listeners and the vertical slice listed in §3, with the server
+authoritative on movement. Two profile rules matter for interop:
+
+- The game session requires the **XOR32 profile** on both ends (`xor32: true`, the default in
+  `startMuServer`). The reference OpenMU HEAD only wires XOR32 for the chat server, so a client that
+  does not apply it is dropped (this is asserted by an integration test). Running with `xor32: false`
+  is supported for experimentation.
+- The 8-way movement encoding inside the server is our documented interpretation
+  (`packages/mu-server/src/world.ts`, `DIRECTION_OFFSETS`); authority checks hold regardless of the
+  mapping, but a real client would need the mapping validated (open question below).
+
+## 6. Open compatibility questions
+
+1. Walk direction numbering (0..7) against a real client — validate with a packet capture once the
+   user runs a client against this server.
+2. Whether the target Season 20 client applies XOR32 on the game server connection.
+3. Packet-length maxima that differ between seasons for the wider packet set (only the vertical slice
+   offsets are confirmed today).
+
+## 7. Honest status
 
 - Safe to claim: framing/cipher/packet-slice compatibility with OpenMU-style clients, proven by golden
   vectors and tests.

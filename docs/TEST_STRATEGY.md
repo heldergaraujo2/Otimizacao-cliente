@@ -24,8 +24,12 @@ as `PENDENTE DE VALIDAÇÃO HUMANA` — never as approved.
 
 Target: `mu-server` + a real socket client running the vertical slice (login → character list →
 enter game → walk → disconnect), asserting packets and connection metrics.
-**State: EM ANDAMENTO** — priority 2 in `project/NEXT_TASK.md`; `mu-protocol` already provides both
-ends of the pipeline and is exercised together with the server in the planned test.
+**State: CONCLUÍDO COM EVIDÊNCIAS** — `packages/mu-client/src/test/integration.test.ts` starts a real
+server (TCP listeners), spawns real client sessions and asserts: connect-server handshake, rejected
+credentials, successful login, character list, character selection, map change, client-ready/scope,
+server-authoritative movement (accepted **and** rejected), cross-client scope broadcast, ping echo and
+disconnect cleanup (`npm test -w @mu-reengineer/client` → 6/6). A profile-mismatch test proves that a
+client without XOR32 cannot authenticate (the server drops it and counts the failure).
 
 Already covered at this level: the CLI spawns real processes, writes fixtures to disk and re-parses
 them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence recorded in
@@ -35,7 +39,9 @@ them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence r
 
 Target: process-level run (server process + headless client process) covering startup, connection,
 authentication, session flow, movement, disconnect/reconnect.
-**State: NÃO INICIADO** — depends on Level 3.
+**State: EM ANDAMENTO** — the session flow, movement and disconnect are covered by the Level 3 suite
+(real sockets, real processes inside the test runner). Still missing: a standalone server process (CLI
+entry point), reconnect after an unexpected drop and a long-running session check.
 
 ## Level 5 — visual and resources
 

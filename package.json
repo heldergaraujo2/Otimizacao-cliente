@@ -13,7 +13,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @mu-reengineer/protocol && npm run build -w @mu-reengineer/formats && npm run build -w @mu-reengineer/server && npm run build -w @mu-reengineer/client && npm run build -w @mu-reengineer/cli",
     "test": "npm run test --workspaces --if-present",
     "bench": "npm run bench --workspaces --if-present",
     "clean": "rm -rf packages/*/dist tools/*/dist",

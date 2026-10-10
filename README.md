@@ -14,8 +14,8 @@ protocol-compatible server and the tooling needed to prove both.
 | --- | --- | --- |
 | `packages/mu-protocol` — MU wire protocol (framing, XOR3/XOR32, SimpleModulus, packet codecs) | CONCLUÍDO COM EVIDÊNCIAS | 35 automated tests green, byte-exact vector replay against OpenMU (MIT), benchmarks recorded |
 | `packages/mu-formats` — resource formats (FileCryptor, ModulusCryptor, LEA-256, BMD, OZT/OZB/OZJ/DDS/TGA, ATT/MAP/OBJ, PNG export) | EM ANDAMENTO | 22 automated tests green over self-generated fixtures; real-game-data conformance still pending |
-| `packages/mu-server` — headless protocol-compatible server | NÃO INICIADO | — |
-| `packages/mu-client` — the modernised client | NÃO INICIADO | — |
+| `packages/mu-server` — headless protocol-compatible server | CONCLUÍDO COM EVIDÊNCIAS (vertical slice) | 9 tests (world rules) + real-socket integration test: connect server, login, character list/select, map change, scope, movement authority, ping, disconnect cleanup |
+| `packages/mu-client` — the modernised client | EM ANDAMENTO | headless core done (`ClientSession`, connect-server client) and driven end to end against the server in 6 integration tests; browser renderer not started |
 | `tools/mu-cli` — inspection/export CLI | CONCLUÍDO COM EVIDÊNCIAS | 8 automated tests; `gen-fixtures` disk round-trip (10/10), `inspect`/`scan`/`export-png`/`decode-packet` verified manually |
 | Continuous integration | CONCLUÍDO COM EVIDÊNCIAS (local equivalent) | `.github/workflows/ci.yml`: install → build → test → `mu-cli gen-fixtures` + `scan` on Node 22 |
 

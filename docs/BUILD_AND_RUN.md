@@ -64,21 +64,42 @@ bash scripts/fetch-references.sh /path/to/third_party   # clones the pinned comm
 These clones are never compiled or imported by the build. They require network access; in restricted
 environments skip them and rely on the committed vectors and documentation in `docs/protocol/`.
 
-## 6. Running the client / server (once implemented)
+## 6. Running the client / server
 
-Target interface (documented here so the docs stay ahead of the code, and marked EM ANDAMENTO until it
-actually runs):
+The server and the headless client core are implemented and exercised by the integration test. Start
+them from a script:
+
+```js
+// demo.mjs — needs `npm run build` first
+import { startMuServer } from '@mu-reengineer/server';
+import { ClientSession, fetchServerList, fetchConnectionInfo } from '@mu-reengineer/client';
+
+const server = await startMuServer({});                    // ephemeral ports
+console.log(await fetchServerList(server.host, server.connectPort));       // [ { serverId: 0, loadPercentage: 0 } ]
+const game = await fetchConnectionInfo(server.host, server.connectPort, 0);
+const session = await ClientSession.connect({ host: game.ipAddress, port: game.port });
+console.log(await session.login('demo', 'demo'));          // 0 = LoginResult.Okay
+console.log(await session.requestCharacterList());
+await session.selectCharacter('DarkKnight');
+await session.clientReady();
+session.walk([2, 2, 2]);                                   // three steps east (125 -> 128)
+session.close();
+await server.close();
+```
+
+Demo accounts (development only): `demo`/`demo` → character `DarkKnight`, `alt`/`alt` → `ElfArcher`.
+
+Browser renderer commands (EM ANDAMENTO — the renderer itself is not implemented yet):
 
 ```bash
-# server (headless, TCP)
-npm run start -w @mu-reengineer/server -- --port 44405 --game-port 55901
-
-# client, headless session driver (Level 3/4 evidence)
-npm run start -w @mu-reengineer/client -- --host 127.0.0.1 --port 55901 --user demo --password demo
-
-# client, browser renderer (live preview; requires a GPU for meaningful frame rates)
-npm run dev -w @mu-reengineer/client -- --host 0.0.0.0
+npm run dev -w @mu-reengineer/client -- --host 0.0.0.0   # planned Vite entry point
 ```
+
+## 6.1 Cipher profile
+
+The server expects the XOR32 stream mask on the game connection (`xor32: true`, default). A client that
+does not apply it is dropped during decryption and counted in `metrics.game.unsupportedPackets` /
+`loginsFailed`; pass `xor32: false` to `startMuServer` to experiment with the plain profile.
 
 ## 7. Environment limitations observed in the automation sandbox
 
