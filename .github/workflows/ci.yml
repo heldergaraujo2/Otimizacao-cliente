@@ -21,6 +21,7 @@ jobs:
         run: npm run build
       - name: Run automated tests
         run: npm test
-      - name: Verify resource fixtures can be generated and parsed
+      - name: Verify resource fixtures can be generated and parsed (disk round trip)
         run: node tools/mu-cli/dist/index.js gen-fixtures --out tests/fixtures
-        continue-on-error: true
+      - name: Scan the generated fixtures with the CLI (classification report)
+        run: node tools/mu-cli/dist/index.js scan tests/fixtures

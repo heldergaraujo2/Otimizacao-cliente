@@ -2,7 +2,17 @@
 
 **Updated:** 2026-10-10 · **Branch:** session branch (`arena/ef58bc1d-otimizacao-cliente`)
 
-## Priority 1 — `tools/mu-cli` + resource-fixture self-check (unblocks CI step)
+> **Start here:** Priority 1 (`tools/mu-cli`) is finished — begin with **Priority 2 (`packages/mu-server`
+> + the Level 3/4 integration test)**, then Priority 3 (`packages/mu-client`).
+
+## Priority 1 — `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
+
+Delivered: `inspect`, `export-png`, `scan`, `gen-fixtures`, `decode-packet` (`tools/mu-cli`), 8/8 tests,
+`gen-fixtures` disk round-trip 10/10, `scan` classification, `decode-packet` recovering credentials.
+CI now runs the fixture round trip and the scan **without** `continue-on-error`.
+(`packages/mu-protocol` gained `SimpleModulusDecryptor.lastCounter` for diagnostics.)
+
+## Priority 1b (was Priority 1) — historical task definition
 
 **Why now:** CI already calls `node tools/mu-cli/dist/index.js gen-fixtures --out tests/fixtures`
 (`continue-on-error`); the tool does not exist. It is also the interface the user needs to validate
@@ -80,4 +90,6 @@ recorded in `docs/TEST_STRATEGY.md` + `project/CHANGELOG.md`.
 ## Do not redo
 
 Fase 0 audit, `packages/mu-protocol` (35 tests), `packages/mu-formats` source+tests (22 tests),
-CI skeleton, `docs/protocol/` dumps. Only extend them.
+`tools/mu-cli` (8 tests, incl. the disk round-trip + scan + packet decode), the CI pipeline steps, the
+continuity documentation and the `docs/protocol/` dumps. Extract the *why* from them and extend them —
+do not rebuild them.

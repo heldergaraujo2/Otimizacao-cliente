@@ -58,7 +58,27 @@ against. No real `.bmd/.ozt/.att` file has been parsed yet (blocked by data avai
 
 ### `packages/mu-client` — NÃO INICIADO
 
-### `tools/mu-cli` — NÃO INICIADO (referenced by CI, currently `continue-on-error`)
+### `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS
+
+Implemented: `inspect <file>` (BMD v0/v12/v15, OZT/OZB/OZJ/TGA/DDS, ATT/MAP/OBJ, unknown), `export-png`
+(textures → PNG; OZJ → embedded `.jpg`), `scan <dir>` (classifies a data directory and reports
+unreadable files — the tool the user runs on real game data), `gen-fixtures --out <dir>` (writes the 10
+deterministic fixtures and re-parses all of them from disk), `decode-packet <hex>` (framing +
+SimpleModulus with the right key pair per direction + codecs; recovers login credentials through XOR3).
+`--json` on every command for machine consumption.
+
+Evidence:
+
+```bash
+npm run build                                        # clean
+node --test "tools/mu-cli/dist/test/*.test.js"       # 8 tests, 8 pass
+node tools/mu-cli/dist/index.js gen-fixtures --out /tmp/fx   # 10/10 re-parsed successfully
+node tools/mu-cli/dist/index.js scan /tmp/fx         # 10 files, 10 ok, formats classified
+node tools/mu-cli/dist/index.js inspect /tmp/fx/model_v15.bmd  # v15, 4 vertices, 2 triangles, 3 bones
+```
+
+Also added to `packages/mu-protocol`: `SimpleModulusDecryptor.lastCounter` (reports the counter value
+accepted for the last packet — used by the CLI diagnostics and asserted in the protocol suite).
 
 ### Documentation / continuity — EM ANDAMENTO
 

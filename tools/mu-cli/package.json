@@ -1,0 +1,23 @@
+{
+  "name": "@mu-reengineer/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MU-REENGINEER command line tool: resource inspection/export, fixture self-check and packet decoding",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "mu-cli": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/test/*.test.js\""
+  },
+  "dependencies": {
+    "@mu-reengineer/formats": "*",
+    "@mu-reengineer/protocol": "*"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

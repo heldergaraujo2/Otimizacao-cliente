@@ -32,6 +32,19 @@ npm run bench -w @mu-reengineer/protocol
 npm run build -w @mu-reengineer/formats
 npm test      -w @mu-reengineer/formats       # 22 tests
 npm run bench -w @mu-reengineer/formats
+
+npm run build -w @mu-reengineer/cli
+npm test      -w @mu-reengineer/cli           # 8 tests (incl. the built CLI end to end)
+```
+
+CLI examples:
+
+```bash
+npm run cli -- inspect "D:/MU-REENGINEER-DATA/Data/Player.bmd"
+npm run cli -- scan "D:/MU-REENGINEER-DATA/Data" --limit 500
+npm run cli -- export-png "D:/MU-REENGINEER-DATA/Data/World1/grass01.ozt" out/grass01.png
+npm run cli -- gen-fixtures --out tests/fixtures
+npm run cli -- decode-packet "c3 3b f1 01 …" --direction c2s
 ```
 
 Root scripts: `build`, `test`, `bench`, `clean` (`rm -rf packages/*/dist tools/*/dist`), `cli`.

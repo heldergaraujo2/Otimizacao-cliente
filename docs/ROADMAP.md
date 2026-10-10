@@ -7,10 +7,10 @@ A phase without executed evidence is never "done".
 | Fase | Objective | State | Evidence / dependency |
 | --- | --- | --- | --- |
 | 0 | Initial audit (repos, licences, environment) | CONCLUÍDO COM EVIDÊNCIAS | audit notes in `project/CONTEXT.md`; pins in `third_party/PINS.json`; commit `55530b0` |
-| 1 | Repository preparation (monorepo, CI, docs, continuity) | EM ANDAMENTO | monorepo + CI + docs exist; `mu-server`/`mu-client`/`mu-cli` skeletons pending |
+| 1 | Repository preparation (monorepo, CI, docs, continuity) | CONCLUÍDO COM EVIDÊNCIAS | workspaces `mu-protocol`, `mu-formats`, `mu-cli` build and test green; CI runs install → build → test → fixture round trip + scan; continuity docs complete |
 | 2 | Season 20 data acquisition/inspection | BLOQUEADO EXTERNEMENTE | download host unreachable from the sandbox (curl `HTTP 000`); user must supply data |
 | 3 | Build the reference client (`xulek/muonline`) | BLOQUEADO EXTERNAMENTE | needs .NET 10 SDK + Windows/MonoGame; no `dotnet` here |
-| 4 | Resource tooling (BMD/OZ*/terrain readers, exporters) | EM ANDAMENTO | `mu-formats` 22/22 tests green; `tools/mu-cli` still to be written; real-data conformance blocked with Fase 2 |
+| 4 | Resource tooling (BMD/OZ*/terrain readers, exporters) | EM ANDAMENTO | `mu-formats` 22/22 + `tools/mu-cli` 8/8 tests green, fixture disk round-trip 10/10; real-data conformance still blocked with Fase 2 |
 | 5 | Optimised client architecture | EM ANDAMENTO | architecture + decisions documented (`docs/ARCHITECTURE.md`, `project/DECISIONS.md`); implementation starts with the headless core |
 | 6 | Resource pipeline (decrypt → decode → cache → render-ready) | EM ANDAMENTO | ciphers/readers done and tested on fixtures; pipeline integration into the client pending |
 | 7 | Renderer and 3D scene | NÃO INICIADO | requires Fase 6 + GPU validation (Level 6/7 human) |

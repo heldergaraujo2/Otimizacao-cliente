@@ -132,6 +132,8 @@ test('the packet counter wraps at 255 without corrupting the stream', () => {
     const encrypted = encryptor.encryptPacket(packet);
     const decrypted = decryptor.decryptPacket(encrypted);
     assert.equal(toHex(decrypted), toHex(packet), `mismatch at packet ${i}`);
+    // the decryptor exposes which counter value it accepted (useful for diagnostics and the CLI)
+    assert.equal(decryptor.lastCounter, i % 256, `counter not reported at packet ${i}`);
   }
 });
 

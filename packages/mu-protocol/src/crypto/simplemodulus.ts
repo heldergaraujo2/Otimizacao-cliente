@@ -303,6 +303,8 @@ export class SimpleModulusDecryptor {
 
   /** When true, blocks with a wrong checksum are decrypted but reported instead of throwing. */
   acceptWrongBlockChecksum = false;
+  /** Counter carried by the most recently decrypted packet (undefined before the first packet). */
+  lastCounter: number | undefined;
   /** Collects non-fatal decryption warnings (counter/checksum). */
   readonly warnings: string[] = [];
 
@@ -356,6 +358,7 @@ export class SimpleModulusDecryptor {
         plain,
         outputStart + i * cfg.decryptedBlockSize,
       );
+      if (i === 0 && cfg.hasCounter) this.lastCounter = plain[outputStart];
       if (i === 0 && cfg.hasCounter && plain[outputStart] !== this.counter) {
         const message = `packet counter mismatch: got ${plain[outputStart]}, expected ${this.counter}`;
         this.warnings.push(message);

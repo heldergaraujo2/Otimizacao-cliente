@@ -16,8 +16,8 @@ protocol-compatible server and the tooling needed to prove both.
 | `packages/mu-formats` — resource formats (FileCryptor, ModulusCryptor, LEA-256, BMD, OZT/OZB/OZJ/DDS/TGA, ATT/MAP/OBJ, PNG export) | EM ANDAMENTO | 22 automated tests green over self-generated fixtures; real-game-data conformance still pending |
 | `packages/mu-server` — headless protocol-compatible server | NÃO INICIADO | — |
 | `packages/mu-client` — the modernised client | NÃO INICIADO | — |
-| `tools/mu-cli` — inspection/export CLI | NÃO INICIADO | — |
-| Continuous integration | CONCLUÍDO COM EVIDÊNCIAS | `.github/workflows/ci.yml` (build + test on Node 22) |
+| `tools/mu-cli` — inspection/export CLI | CONCLUÍDO COM EVIDÊNCIAS | 8 automated tests; `gen-fixtures` disk round-trip (10/10), `inspect`/`scan`/`export-png`/`decode-packet` verified manually |
+| Continuous integration | CONCLUÍDO COM EVIDÊNCIAS (local equivalent) | `.github/workflows/ci.yml`: install → build → test → `mu-cli gen-fixtures` + `scan` on Node 22 |
 
 Nothing in this repository redistributes game assets: proprietary data is read from the
 contributor's own copy at runtime (see [`docs/ASSET_PIPELINE.md`](docs/ASSET_PIPELINE.md) and
@@ -30,6 +30,8 @@ npm install          # restore the workspaces (Node >= 22)
 npm run build        # compile every workspace
 npm test             # run all automated tests
 npm run bench        # throughput benchmarks (protocol + resource formats)
+npm run cli -- gen-fixtures --out tests/fixtures   # write + re-parse every resource fixture
+npm run cli -- scan "D:/MU-REENGINEER-DATA/Data"   # classify your own data directory
 ```
 
 ## Layout

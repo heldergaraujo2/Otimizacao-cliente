@@ -18,6 +18,7 @@ as `PENDENTE DE VALIDAÇÃO HUMANA` — never as approved.
 | Wire protocol | `npm test -w @mu-reengineer/protocol` | **35/35 pass** — framing (C1/C2/C3/C4), assembler edge cases, XOR3/XOR32, SimpleModulus vectors and round-trips, connection pipeline, packet builders/parsers |
 | Resource formats | `npm test -w @mu-reengineer/formats` | **22/22 pass** — FileCryptor/BUX/LEA/ModulusCryptor, BMD v0/v12/v15, OZT/OZB/OZJ/TGA/DDS, ATT/MAP/OBJ, PNG, malformed-input rejections |
 | Golden vectors | part of the protocol suite | byte-exact replay of 4 OpenMU-generated vectors (MIT), including `C3 185→255` and `C4 3000→4128` |
+| CLI (`tools/mu-cli`) | `npm test -w @mu-reengineer/cli` | **8/8 pass** — disk round-trip of all 10 fixtures, inspection of every generated format, PNG export, directory scan, packet decoding (login credentials recovered through XOR3), and the built CLI spawned as a child process |
 
 ## Level 3 — local integration
 
@@ -25,6 +26,10 @@ Target: `mu-server` + a real socket client running the vertical slice (login →
 enter game → walk → disconnect), asserting packets and connection metrics.
 **State: EM ANDAMENTO** — priority 2 in `project/NEXT_TASK.md`; `mu-protocol` already provides both
 ends of the pipeline and is exercised together with the server in the planned test.
+
+Already covered at this level: the CLI spawns real processes, writes fixtures to disk and re-parses
+them (`gen-fixtures`, 10/10), and classifies a directory (`scan`) — evidence recorded in
+`project/CHANGELOG.md` cycle 3.
 
 ## Level 4 — end to end
 
