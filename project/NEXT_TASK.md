@@ -2,8 +2,8 @@
 
 **Updated:** 2026-10-10 · **Branch:** session branch (`arena/ef58bc1d-otimizacao-cliente`)
 
-> **Start here:** Priority 1 (`tools/mu-cli`) is finished — begin with **Priority 2 (`packages/mu-server`
-> + the Level 3/4 integration test)**, then Priority 3 (`packages/mu-client`).
+> **Start here:** Priorities 1 and 2 are finished — begin with **Priority 3** (browser renderer +
+> resource pipeline in the client), then the follow-ups under Priority 4.
 
 ## Priority 1 — `tools/mu-cli` — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
@@ -68,16 +68,33 @@ speaks the protocol. This is the largest remaining unblocked deliverable.
 **Completion criteria:** integration test green (`node --test`), Level 3 and Level 4 evidence
 recorded in `docs/TEST_STRATEGY.md` + `project/CHANGELOG.md`.
 
-## Priority 3 — `packages/mu-client` (headless core + browser renderer)
+**STATUS: CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)** — connect server, session state machine, world
+(authoritative movement), scope broadcast, ping, logout/disconnect cleanup, XOR32 profile requirement;
+`npm test` → server 9/9 world rules + client 6/6 real-socket integration tests; manual session recorded
+in `project/CHANGELOG.md` cycle 4.
+
+## Priority 3 — `packages/mu-client` (browser renderer + resource pipeline)
+
+The headless core is done (session + connect client, integration-tested). Remaining work:
 
 **Steps**
 
-1. Headless core: session state machine reusing `MuConnection`, resource loader over `mu-formats`
-   with a `MU_REENGINEER_DATA` root, character/scope model, movement prediction + reconciliation.
-2. Browser renderer (three.js, Vite) consuming the core: terrain (`.att`/`.map`/`.obj`), character
-   (`.bmd` + animations), camera, minimal HUD.
-3. Serve a live preview (`vite --host 0.0.0.0`) and document that Levels 5–7 are
+1. Resource layer: loader mapping a data directory (`MU_REENGINEER_DATA`) onto `mu-formats` calls,
+   with a deterministic cache keyed by path+size+mtime (removes the repeated LEA cost measured in
+   `docs/PERFORMANCE.md`), and clear errors for missing/corrupt files.
+2. Browser renderer (three.js + Vite) driven only by `ClientSession` state: terrain from
+   `.att`/`.map`/`.obj`, character from `.bmd` + `extractMeshGeometry` + animation clips, camera,
+   minimal HUD.
+3. Serve a live preview (`vite --host 0.0.0.0`) and document that Levels 5–7 remain
    `PENDENTE DE VALIDAÇÃO HUMANA` from this environment.
+
+## Priority 4 — follow-ups found during cycle 4
+
+- Server: scope-removal packet when a character disconnects or leaves the box; reconnect handling.
+- Server: standalone process entry point (`node packages/mu-server/dist/main.js`) with CLI flags.
+- Compatibility: validate the walk direction numbering and the XOR32 profile against a real client
+  (needs a packet capture from the user).
+- Client: movement prediction/reconciliation so the local player does not depend on server echoes.
 
 ## Externally blocked (needs the user)
 
