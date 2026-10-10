@@ -101,7 +101,9 @@ Design notes:
   turns around, it never walks off the map. `GameServer.tickNpcs()` broadcasts one `ObjectWalked` per
   moving monster to the sessions that can see it and then runs the usual scope diff; `startNpcTicker`
   drives it periodically (server option `npcTickMs`, CLI `--npc-tick`, `0` = still world). Randomness is
-  injected, which is what makes the behaviour testable.
+  injected, which is what makes the behaviour testable. A candidate step is predicted with the same
+  `applyWalk` the server validates with and rejected when it would leave the monster's home radius
+  (default 6 tiles), so the demo population stays around its spawn instead of slowly drifting away.
 - Characters are animated with the BMD skeleton: the renderer builds three.js bones from the model's
   bone list, binds the mesh with **identity** bind matrices (vertices are stored in bone space) and,
   every frame, samples the clip through `mu-formats` (`computeBoneWorldMatrices`) to drive both the

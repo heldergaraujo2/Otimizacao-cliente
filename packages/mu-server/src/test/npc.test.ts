@@ -91,3 +91,21 @@ test('a monster keeps its type number and identity across the walk', () => {
   assert.equal(step.npc.kind, 'npc');
   assert.ok(step.directions.length >= 1 && step.directions.length <= 3);
 });
+
+test('a monster stays inside its home radius and turns instead of wandering off', () => {
+  const world = new World();
+  const [npc] = world.spawnNpcs([{ typeNumber: 0x0001, name: 'Guard', x: 131, y: 125, rotation: 2 }]);
+  // pretend it spawned at 125 and already drifted the full radius east
+  npc!.homeX = 125;
+  npc!.homeY = 125;
+
+  // three east attempts (direction 2) always end at 132, one tile outside the default radius of 6
+  const steps = wanderNpcs(world, sequence([0.5, 0, 0.3]), { idleChance: 0.25, maxSteps: 1 });
+  assert.equal(steps[0]!.idle, true, 'every candidate left the territory');
+  assert.equal(world.get(npc!.id)?.x, 131, 'the world was not touched by the rejected candidates');
+
+  // the same draw is accepted when the radius allows it
+  const allowed = wanderNpcs(world, sequence([0.5, 0, 0.3]), { idleChance: 0.25, maxSteps: 1, homeRadius: 7 });
+  assert.equal(allowed[0]!.idle, false);
+  assert.equal(world.get(npc!.id)?.x, 132);
+});

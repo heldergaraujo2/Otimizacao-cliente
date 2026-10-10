@@ -35,6 +35,9 @@ export interface WorldCharacter {
   kind?: WorldObjectKind;
   /** Monster/NPC type number as the client knows it (packet field `TypeNumber`). */
   typeNumber?: number;
+  /** Where a monster/NPC spawned; the wander keeps it near this point. */
+  homeX?: number;
+  homeY?: number;
 }
 
 /** True for monsters/NPCs (they travel in `AddNpcsToScope`, players in `AddCharactersToScope`). */
@@ -89,6 +92,8 @@ export class World {
         heroState: 0,
         kind: 'npc',
         typeNumber: spawn.typeNumber,
+        homeX: spawn.x,
+        homeY: spawn.y,
       }),
     );
   }

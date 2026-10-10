@@ -8,6 +8,8 @@
  * source.
  */
 
+import { applyWalk, MAP_SIZE } from '@mu-reengineer/protocol';
+
 import type { World, WorldCharacter } from './world.js';
 
 /** Injectable randomness so tests can pin the movement (defaults to `Math.random`). */
@@ -31,6 +33,12 @@ export interface WanderOptions {
   maxSteps?: number;
   /** Direction pool; defaults to all eight compass directions. */
   directions?: readonly number[];
+  /**
+   * How far (Chebyshev tiles) a monster may get from the place it spawned. Without this the demo
+   * population slowly drifts out of the player's scope; a monster that would leave the radius simply
+   * turns around. Default 6.
+   */
+  homeRadius?: number;
 }
 
 /**
@@ -44,6 +52,7 @@ export function wanderNpcs(world: World, rng: RandomFn = Math.random, options: W
   const idleChance = options.idleChance ?? 0.25;
   const maxSteps = options.maxSteps ?? 3;
   const pool = options.directions ?? [0, 1, 2, 3, 4, 5, 6, 7];
+  const homeRadius = options.homeRadius ?? 6;
   const steps: NpcStep[] = [];
 
   for (const npc of world.all()) {
@@ -61,10 +70,23 @@ export function wanderNpcs(world: World, rng: RandomFn = Math.random, options: W
       candidates.push(new Array(count).fill(direction & 0x7));
     }
 
+    const homeX = npc.homeX ?? npc.x;
+    const homeY = npc.homeY ?? npc.y;
+
     let moved = false;
-    // three attempts with fresh directions, so a monster pressed against the map border still moves
+    // Three attempts with fresh directions, so a monster against the map border or at the edge of its
+    // home radius still moves instead of freezing. The candidate is predicted with the very same
+    // function the server validates with (`applyWalk`), so a rejected candidate never touches the world.
     for (let attempt = 0; attempt < candidates.length && !moved; attempt++) {
       const directions = candidates[attempt]!;
+      const predicted = applyWalk(npc.x, npc.y, npc.rotation, directions, MAP_SIZE);
+      if (!predicted.ok) continue;
+      if (
+        Math.abs(predicted.x - homeX) > homeRadius ||
+        Math.abs(predicted.y - homeY) > homeRadius
+      ) {
+        continue; // outside its territory — try another direction instead of walking out of it
+      }
       const result = world.move(npc.id, directions);
       if (!result.ok) continue;
       moved = true;

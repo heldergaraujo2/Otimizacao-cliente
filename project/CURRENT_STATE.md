@@ -112,11 +112,12 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 `mu-server/src/npc.ts` (`wanderNpcs` with an injected random source, movement through `World.move`),
 `GameServer.tickNpcs()`/`startNpcTicker()` broadcasting one `ObjectWalked` per moving monster only to
 sessions that can see it, metrics `npcTicks`/`npcSteps`, server options `npcTickMs`/`npcRandom`,
-`server.game` exposed, CLI flag `--npc-tick`, and the client's tracked views updated on every
-`ObjectWalked`. 6 new tests (5 wander + 1 integration driving the ticks by hand). Measurement: 0.012
+`server.game` exposed, CLI flag `--npc-tick`, a **home radius** (default 6 tiles; candidates are
+predicted with `applyWalk` and rejected before the world moves), and the client's tracked views updated
+on every `ObjectWalked`. 7 new tests (6 wander + 1 integration driving the ticks by hand). Measurement: 0.012
 ms/tick for the demo population, 0.082 ms/tick for 200 monsters with 1 session (median of 3).
 
-Evidence: `npm test` → **125 tests, 0 failures**; `node packages/mu-server/dist/main.js --help` lists
+Evidence: `npm test` → **126 tests, 0 failures**; `node packages/mu-server/dist/main.js --help` lists
 `--npc-tick`; the preview shows monsters moving (frames need a GPU → human validation).
 
 ### Monsters/NPCs in the world and in the view — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)

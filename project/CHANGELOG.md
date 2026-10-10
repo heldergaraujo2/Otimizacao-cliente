@@ -37,6 +37,13 @@ Concrete changes with the evidence that proves them. Newest first.
   (81 604 ticks/s); 200 monsters + 1 session → 0.082 ms/tick (12 218 ticks/s) with 9.45 broadcasts per
   tick — cost scales with *visible* monsters, not population.
 
+**Follow-up inside the same cycle:** the wander gained a **home radius** (default 6 tiles, `homeRadius`
+option) after the first live check showed the demo population slowly drifting out of the player's scope:
+a candidate step is predicted with the same `applyWalk` the server validates with and rejected when it
+would leave the territory, so a rejected candidate never touches the world. 1 more test (a monster at
+the radius edge turns instead of walking out; the same draw is accepted with a larger radius) — server
+17/17, total **126/126**.
+
 **Limitations**
 
 - The wander is not MU's monster AI: no aggression, no pathing around obstacles (the ATT walkability

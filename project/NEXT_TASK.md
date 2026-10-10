@@ -4,7 +4,7 @@
 · **Central repo:** `https://github.com/heldergaraujo2/Otimizacao-cliente`
 
 > **Start here:** cycles 1–12 are committed and pushed (cycle 12 = monsters that wander); the last
-> full run was `npm test` → **125 tests, 0 failures** (protocol 43, formats 33, client 17, server 16,
+> full run was `npm test` → **126 tests, 0 failures** (protocol 43, formats 33, client 17, server 17,
 > cli 9, gateway 7). The vertical slice covers login → characters → map → scope for **players and
 > monsters** → authoritative movement and monster wander → ping → logout, with a browser client that
 > renders terrain, animated skinned characters and monsters.
@@ -32,7 +32,7 @@
 | 4 | Diff-based view synchronisation, `MapObjectOutOfScope`, standalone server CLI, Level 4 process tests, shared movement model, prediction/reconciliation | cycle 9 (commit `ff83546`), 103/103 at the time |
 | 5 | BMD animation + skinning, `export-obj`, animated skinned client renderer | cycle 10 (commit `2fc5dfb`), 115/115 |
 | 6 | Monsters/NPCs as world objects + `AddNpcsToScope` (C2 13) + client/renderer support | cycle 11, 119/119 |
-| 7 | Monsters that wander: `npc.ts` wander step through `World.move`, `tickNpcs()` broadcast, `--npc-tick`, client view tracking | cycle 12, 125/125, tick measured 0.082 ms for 200 monsters |
+| 7 | Monsters that wander: `npc.ts` wander step through `World.move`, home radius, `tickNpcs()` broadcast, `--npc-tick`, client view tracking | cycle 12, 126/126, tick measured 0.082 ms for 200 monsters |
 
 ## Priority 4 — follow-ups (current)
 
@@ -70,7 +70,7 @@
 
 ```bash
 npm install && npm run build          # required after a fresh snapshot (node_modules/dist are ignored)
-npm test                              # 125 tests expected
+npm test                              # 126 tests expected
 node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data
 npm run dev -w @mu-reengineer/client  # Vite on 0.0.0.0:5173, proxies /ws, /assets, /health
 ```
