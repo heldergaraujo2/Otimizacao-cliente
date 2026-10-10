@@ -151,7 +151,18 @@ test('movement is server-authoritative, broadcast to characters in scope, and re
     assert.equal(server.metrics.game.walksAccepted, 1);
     assert.equal(server.metrics.game.walksRejected, 1);
 
+    // when the walker disconnects, the observer is told that the object left its view
+    const removed = new Promise<number[]>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('no MapObjectOutOfScope received')), 2000);
+      observer.on('scopeRemoved', (event) => {
+        clearTimeout(timer);
+        resolve(event.objectIds);
+      });
+    });
     walker.close();
+    assert.deepEqual(await removed, [walkerId]);
+    assert.equal(server.metrics.game.scopeRemovals, 1);
+
     observer.close();
   });
 });

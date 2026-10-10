@@ -20,6 +20,7 @@ import {
   buildLoginResponse,
   buildLogOut,
   buildMapChanged,
+  buildMapObjectOutOfScope,
   buildObjectWalked,
   buildPing,
   buildRequestCharacterList,
@@ -34,6 +35,7 @@ import {
   parseLoginResponse,
   parseLogOut,
   parseMapChanged,
+  parseMapObjectOutOfScope,
   parseObjectWalked,
   parsePing,
   parseSelectCharacter,
@@ -199,6 +201,12 @@ test('map change packet matches the documented field offsets', () => {
 test('walk request round trip preserves step count and directions', () => {
   const directions = [1, 2, 3, 4, 5];
   const packet = buildWalkRequest(133, 118, 3, directions);
+  // reference wire layout (ClientToServerPackets WalkRequest): [3] sourceX, [4] sourceY,
+  // [5] rotation in the high nibble and step count in the low one, [6..] packed directions
+  assert.equal(packet[3], 133);
+  assert.equal(packet[4], 118);
+  assert.equal(packet[5], (3 << 4) | 5);
+  assert.equal(packet[6], (directions[0] & 0x0f) | ((directions[1] & 0x0f) << 4));
   const parsed = parseWalkRequest(packet);
   assert.equal(parsed.sourceX, 133);
   assert.equal(parsed.sourceY, 118);
@@ -209,12 +217,38 @@ test('walk request round trip preserves step count and directions', () => {
 
 test('object walked round trip (server -> client)', () => {
   const packet = buildObjectWalked(4711, 140, 120, 2, [0, 1, 2]);
+  // reference layout (ObjectWalked): [3..4] id, [5] x, [6] y, [7] rotation high / step count low
+  assert.equal(packet[3], 0x12);
+  assert.equal(packet[4], 0x67);
+  assert.equal(packet[5], 140);
+  assert.equal(packet[6], 120);
+  assert.equal(packet[7], (2 << 4) | 3);
   const parsed = parseObjectWalked(packet);
   assert.equal(parsed.objectId, 4711);
   assert.equal(parsed.targetX, 140);
   assert.equal(parsed.targetY, 120);
   assert.equal(parsed.stepCount, 3);
+  assert.equal(parsed.targetRotation, 2);
   assert.deepEqual(parsed.directions, [0, 1, 2]);
+
+  // rotation 7 with two steps must not collide with rotation 2 and seven steps
+  const asymmetric = parseObjectWalked(buildObjectWalked(1, 2, 3, 7, [0, 1]));
+  assert.equal(asymmetric.targetRotation, 7);
+  assert.equal(asymmetric.stepCount, 2);
+});
+
+test('map object out of scope follows the reference layout', () => {
+  const packet = buildMapObjectOutOfScope([4711, 258]);
+  assert.equal(packet[0], 0xc1);
+  assert.equal(packet[2], 0x14);
+  assert.equal(packet[3], 2); // object count at index 3
+  assert.equal(packet[4], 0x12); // 4711 big endian
+  assert.equal(packet[5], 0x67);
+  assert.equal(packet[6], 0x01); // 258 big endian
+  assert.equal(packet[7], 0x02);
+  assert.equal(packet.length, 3 + 1 + 4);
+  assert.deepEqual(parseMapObjectOutOfScope(packet).objectIds, [4711, 258]);
+  assert.deepEqual(parseMapObjectOutOfScope(buildMapObjectOutOfScope([])).objectIds, []);
 });
 
 test('scope packet uses the reference nibble order (rotation high, hero state low)', () => {

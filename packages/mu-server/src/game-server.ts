@@ -25,6 +25,7 @@ import {
   buildLogOut,
   buildLoginResponse,
   buildMapChanged,
+  buildMapObjectOutOfScope,
   buildObjectWalked,
   buildPing,
   buildServerMessage,
@@ -62,6 +63,7 @@ export interface GameServerMetrics {
   walksAccepted: number;
   walksRejected: number;
   scopePackets: number;
+  scopeRemovals: number;
   unsupportedPackets: number;
   disconnects: number;
 }
@@ -75,6 +77,7 @@ export class GameServer {
     walksAccepted: 0,
     walksRejected: 0,
     scopePackets: 0,
+    scopeRemovals: 0,
     unsupportedPackets: 0,
     disconnects: 0,
   };
@@ -105,6 +108,18 @@ export class GameServer {
   /** Sessions that are in game — used for scope broadcast. */
   inGameSessions(): GameServerSession[] {
     return [...this.sessions].filter((session) => session.state === 'in-game');
+  }
+
+  /** Tells every session which can see `character` that it left their view. */
+  broadcastOutOfScope(character: WorldCharacter): void {
+    const packet = buildMapObjectOutOfScope([character.id]);
+    for (const session of this.inGameSessions()) {
+      if (session.character?.id === character.id) continue;
+      if (session.character && session.canSee(character)) {
+        session.send(packet);
+        this.metrics.scopeRemovals += 1;
+      }
+    }
   }
 
   broadcastScope(character: WorldCharacter, exceptId?: number): void {
@@ -181,6 +196,8 @@ export class GameServerSession {
     if (this.state !== 'closed') this.state = 'closed';
     this.server.metrics.disconnects += 1;
     if (this.character) {
+      // anyone who could see this character must be told, before it disappears from the world
+      this.server.broadcastOutOfScope(this.character);
       this.server.internals.options.world.remove(this.character.id);
     }
     if (this.account) this.account.connected = false;

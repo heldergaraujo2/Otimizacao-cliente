@@ -21,6 +21,7 @@ import {
   parseGameServerEntered,
   parseLoginResponse,
   parseMapChanged,
+  parseMapObjectOutOfScope,
   parseObjectWalked,
   parsePing,
   parseServerMessage,
@@ -61,6 +62,7 @@ export interface PlayerState {
 
 export interface SessionEvents {
   scope: ScopeCharacter[];
+  scopeRemoved: { objectIds: number[] };
   walked: { objectId: number; targetX: number; targetY: number; rotation: number };
   serverMessage: { type: number; message: string };
   packet: { name: string; size: number };
@@ -251,6 +253,10 @@ export class ClientSession {
     const header = readPacketHeader(packet);
     if (header.code === GAME_CODE.ScopeCharacters) {
       this.emit('scope', parseAddCharactersToScope(packet).characters);
+      return;
+    }
+    if (header.code === GAME_CODE.MapObjectOutOfScope) {
+      this.emit('scopeRemoved', parseMapObjectOutOfScope(packet));
       return;
     }
     if (header.code === GAME_CODE.ObjectWalked) {

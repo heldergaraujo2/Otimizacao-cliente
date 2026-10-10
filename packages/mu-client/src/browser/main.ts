@@ -156,6 +156,12 @@ async function start(username: string, password: string): Promise<void> {
     }
   });
   session.on('walked', (event) => renderer.setTarget(event.objectId, event.targetX, event.targetY));
+  session.on('scopeRemoved', (event) => {
+    for (const objectId of event.objectIds) {
+      renderer.removeCharacter(objectId);
+      log(`object ${objectId} left the view`);
+    }
+  });
   session.on('closed', () => {
     log('connection closed');
     session = undefined;

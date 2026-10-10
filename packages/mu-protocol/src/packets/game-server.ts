@@ -21,6 +21,7 @@ export const GAME_CODE = {
   MapChanged: 0x1c,
   EnterGate: 0x1c,
   ScopeCharacters: 0x12,
+  MapObjectOutOfScope: 0x14,
   ObjectWalked: 0xd4,
   Login: 0xf1,
   Character: 0xf3,
@@ -370,7 +371,8 @@ export function buildWalkRequest(
   const writer = new ByteWriter(6 + steps.length);
   writer.u8(sourceX);
   writer.u8(sourceY);
-  writer.u8(((directions.length << 4) | (targetRotation & 0x0f)) & 0xff);
+  // Reference (ClientToServerPackets WalkRequest): TargetRotation is the high nibble, StepCount the low one.
+  writer.u8(((targetRotation & 0x0f) << 4) | (directions.length & 0x0f));
   writer.bytes(steps);
   return createPacket(0xc1, GAME_CODE.ObjectWalked, undefined, writer.toUint8Array());
 }
@@ -390,8 +392,8 @@ export function parseWalkRequest(packet: Uint8Array): WalkRequest {
   const sourceX = reader.u8();
   const sourceY = reader.u8();
   const flags = reader.u8();
-  const stepCount = flags >> 4;
-  const targetRotation = flags & 0x0f;
+  const targetRotation = (flags >> 4) & 0x0f;
+  const stepCount = flags & 0x0f;
   const directions: number[] = [];
   const stepBytes = Math.ceil(stepCount / 2);
   for (let i = 0; i < stepBytes; i++) {
@@ -415,7 +417,9 @@ export function buildObjectWalked(
   writer.u16be(objectId);
   writer.u8(targetX);
   writer.u8(targetY);
-  writer.u8(((directions.length << 4) | (targetRotation & 0x0f)) & 0xff);
+  // Reference (ServerToClientPackets ObjectWalked): TargetRotation is the high nibble, StepCount the
+  // low one — the same nibble order as WalkRequest, confirmed against both generated structs.
+  writer.u8(((targetRotation & 0x0f) << 4) | (directions.length & 0x0f));
   writer.bytes(steps);
   return createPacket(0xc1, GAME_CODE.ObjectWalked, undefined, writer.toUint8Array());
 }
@@ -435,8 +439,8 @@ export function parseObjectWalked(packet: Uint8Array): {
   const targetX = reader.u8();
   const targetY = reader.u8();
   const flags = reader.u8();
-  const stepCount = flags >> 4;
-  const targetRotation = flags & 0x0f;
+  const targetRotation = (flags >> 4) & 0x0f;
+  const stepCount = flags & 0x0f;
   const directions: number[] = [];
   const stepBytes = Math.ceil(stepCount / 2);
   if (stepBytes > 0) {
@@ -507,6 +511,33 @@ export function parseAddCharactersToScope(packet: Uint8Array): { characters: Sco
     characters.push({ id, currentX, currentY, appearance, name, targetX, targetY, rotation, heroState });
   }
   return { characters };
+}
+
+/**
+ * C1 14 (MapObjectOutOfScope): [3] object count, then one big-endian uint16 id per object.
+ *
+ * Verified against the reference definitions (ServerToClientPackets.xml / generated
+ * `MapObjectOutOfScope`: ObjectCount at index 3, objects start at index 4, Id = BigEndian uint16).
+ * This is the packet a client needs when something leaves its view — for example when another player
+ * disconnects or walks out of the scope box.
+ */
+export function buildMapObjectOutOfScope(objectIds: number[]): Uint8Array {
+  const writer = new ByteWriter(1 + objectIds.length * 2);
+  writer.u8(objectIds.length & 0xff);
+  for (const id of objectIds) writer.u16be(id);
+  return createPacket(0xc1, GAME_CODE.MapObjectOutOfScope, undefined, writer.toUint8Array());
+}
+
+export function parseMapObjectOutOfScope(packet: Uint8Array): { objectIds: number[] } {
+  const header = readPacketHeader(packet);
+  if (header.code !== GAME_CODE.MapObjectOutOfScope) {
+    throw new Error('not a map-object-out-of-scope packet');
+  }
+  const reader = new ByteReader(packet, 3);
+  const count = reader.u8();
+  const objectIds: number[] = [];
+  for (let i = 0; i < count; i++) objectIds.push(reader.u16be());
+  return { objectIds };
 }
 
 /** C1 0D (ServerMessage): [3] type, [4..] ASCII message. */

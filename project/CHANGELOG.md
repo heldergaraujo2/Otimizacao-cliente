@@ -2,6 +2,48 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-10 — cycle 7: reference-exact movement encoding, scope removal, preview re-run
+
+**Changes**
+
+- `mu-protocol`: movement nibble order corrected against BOTH generated reference structs —
+  `WalkRequest` (client→server) and `ObjectWalked` (server→client) both pack the **rotation in the
+  high nibble and the step count in the low nibble** (`GetByteValue(4, 4)` / `GetByteValue(4, 0)` in
+  `ClientToServerPackets.cs` and `ServerToClientPackets.cs` at `89c8f07`). Builder, parser and tests
+  now assert the wire bytes for both packets.
+- `mu-protocol`: new `buildMapObjectOutOfScope`/`parseMapObjectOutOfScope` (C1 14: object count at
+  index 3, big-endian uint16 ids from index 4) — the packet the reference defines for objects leaving
+  a player view.
+- `mu-server`: on disconnect the character is removed from the world *and* announced with
+  `MapObjectOutOfScope` to every session that could see it; new metric `scopeRemovals`.
+- `mu-client`: session emits `scopeRemoved`; the browser page removes the object from the scene.
+
+**Tests executed**
+
+| Command | Result |
+| --- | --- |
+| `npm run build` | clean |
+| `npm test` | protocol 36/36 · formats 22/22 · server 9/9 · client 12/12 · cli 8/8 · gateway 7/7 — **94/94, 0 fail** |
+
+**Preview re-run and verification (2026-10-10, fresh processes, latest build)**
+
+```
+page                     -> 200 (vite, 0.0.0.0:5173)
+GET /assets/             -> 6 files | World1/EncTerrain1.att -> 131076 B
+two WebSocket sessions through ws://127.0.0.1:5173/ws (the browser path):
+  demo walks two steps east -> alt receives {"objectId":1,"targetX":127,"targetY":125,"rotation":2}
+  demo disconnects         -> alt receives MapObjectOutOfScope [1]
+```
+
+**Notes**
+
+1. The nibble order had been *self-consistent but wrong*: our client and server agreed with each other
+   while disagreeing with the reference. It is now asserted byte-by-byte against the generated structs.
+2. `MapObjectOutOfScope` carries no scope-box information, so a character that merely walks out of view
+   is not announced yet (only disconnects are). Removal on distance is the next step in `NEXT_TASK.md`.
+3. No GPU in this sandbox: the preview renders in the user's browser, frame metrics remain
+   `PENDENTE DE VALIDAÇÃO HUMANA`.
+
 ## 2026-10-10 — cycle 6: resource pipeline (loader + HTTP asset route) and reference-accurate scope packets
 
 **Changes**
