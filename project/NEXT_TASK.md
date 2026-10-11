@@ -1,6 +1,6 @@
 # NEXT_TASK — resume here
 
-**Updated:** 2026-10-11 (BMD texture binding implemented; 130 tests and browser build green; Windows test script added) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
+**Updated:** 2026-10-11 (Linux + Windows CI green; BMD first-mesh texture binding implemented; physical-PC test pending) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
 · **Central repo:** `https://github.com/heldergaraujo2/Otimizacao-cliente`
 
 > **Start here:** cycles 1–12 are committed and pushed (cycle 12 = monsters that wander); the last
@@ -11,7 +11,7 @@
 >
 > **Latest CI evidence (2026-10-11):** GitHub Actions run `38162980810` passed all workspace builds, **130 tests**, the browser production build, fixture generation and fixture scan. The BMD first-mesh texture path now resolves case-insensitively and supported textures are uploaded to the character material. Terrain tile texture-to-file mapping and the real GPU result remain unverified.
 >
-> **Immediate PC validation gate:** from the repo root on Windows, run `powershell -ExecutionPolicy Bypass -File .\\scripts\\test-windows.ps1`. It installs dependencies, runs the full build/test suite and browser bundle build, scans `Cliente\\Data` when present, writes `test-results\\windows-validation.txt`, and starts the preview. This real Windows/GPU/data check cannot be executed remotely from GitHub; it must be run on the user's PC. Then continue cycle 13, prioritising real-data visual fidelity.
+> **CI gate:** Linux and Windows GitHub Actions both pass on commit `5c198daa3278f7329838cd08fda41c8cc4153e13`. The Windows job ran the validation script through build, all 130 tests, browser build and demo-data generation.\n>\n> **Immediate physical-PC gate:** from the repo root on Windows, run `powershell -ExecutionPolicy Bypass -File .\\scripts\\test-windows.ps1`. It installs dependencies, runs the full build/test suite and browser bundle build, scans `Cliente\\Data` when present, writes `test-results\\windows-validation.txt`, and starts the preview. This real GPU/proprietary-data check cannot be executed remotely from GitHub; it must be run on the user's PC. Then inspect texture binding and terrain data against actual MU Red assets.
 >
 > **Next (cycle 13), in the order that pays off most:**
 > 1. **A minimal damage/kill flow** — `ObjectGotKilled` (C1 17: `KilledId` BE16, `SkillId` BE16,
