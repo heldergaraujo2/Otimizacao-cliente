@@ -1,3 +1,16 @@
+## 2026-10-11 — Windows validation script and browser bundle CI
+
+**Changes**
+- Added `scripts/test-windows.ps1`: one-command Windows validation for install, full build, all automated tests, browser production build, optional scan of the real `Cliente\\Data` folder, and launch of the preview. It writes a transcript to `test-results/windows-validation.txt` and does not alter the original MU client or its data.
+- Extended `.github/workflows/ci.yml` to build the browser bundle on every push and pull request.
+- Restored the `DEFAULT_PATHS` export from `packages/mu-client/src/resources/loader.ts` after the first CI run caught the API compatibility break caused by extracting the browser-safe constants.
+
+**Evidence**
+- Initial CI run `38162521614` failed during the all-workspace build; the new path module had removed a historical export used by tests.
+- Corrective commit restored that export.
+- GitHub Actions run [`38162610335`](https://github.com/heldergaraujo2/Otimizacao-cliente/actions/runs/38162610335) passed: all workspace builds, all automated tests, browser bundle build, fixture disk round-trip and fixture scan.
+- The Windows script has **not** been run on the user's PC yet; local GPU and real MU Red asset results remain pending.
+
 # CHANGELOG
 
 Concrete changes with the evidence that proves them. Newest first.
