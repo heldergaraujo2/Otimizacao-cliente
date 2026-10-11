@@ -189,12 +189,13 @@ export class MuRenderer {
           const u1 = (col + 1) / columns - insetU;
           const v0 = 1 - (row + 1) / rows + insetV;
           const v1 = 1 - row / rows - insetV;
+          // Counter-clockwise when viewed from above (+Y), so the ground's front faces are visible.
           addVertex(x, z, u0, v1);
-          addVertex(x + 1, z, u1, v1);
           addVertex(x, z + 1, u0, v0);
           addVertex(x + 1, z, u1, v1);
+          addVertex(x + 1, z, u1, v1);
+          addVertex(x, z + 1, u0, v0);
           addVertex(x + 1, z + 1, u1, v0);
-          addVertex(x, z + 1, u0, v0);
         }
       }
       const geometry = new THREE.BufferGeometry();
