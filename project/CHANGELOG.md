@@ -2,6 +2,20 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-11 — browser-safe terrain path extraction
+
+**Change:** extracted the shared `DEFAULT_PATHS` constants into `packages/mu-client/src/resources/paths.ts`,
+a module with no Node.js imports. The browser resource module now imports from `paths.js` rather than
+`loader.js`; the filesystem loader imports the shared constants. This prevents the browser entry from
+pulling Node-only filesystem/path dependencies through the resource loader just to obtain three path strings.
+
+**Files:** `packages/mu-client/src/resources/paths.ts` (new),
+`packages/mu-client/src/browser/resources.ts`, `packages/mu-client/src/resources/loader.ts`.
+
+**Validation:** source was re-read through the GitHub connector after the changes and the import/extraction
+was confirmed. Build and tests were **not executed in this session** because this GitHub editing environment
+does not provide the repository's local Node runtime. Status remains unverified until the next local build.
+
 ## 2026-10-11 — cycle 15: sandbox lifecycle understood, preview `--check` and external verification
 
 **Why:** the preview link returned `502 Bad Gateway — Sandbox not found` between sessions. The question
