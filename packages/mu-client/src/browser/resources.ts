@@ -71,7 +71,7 @@ export async function fetchModel(source: AssetSource, relative: string): Promise
  */
 export function resolveModelTexturePath(texturePath: string, files: string[]): string | undefined {
   const normalize = (value: string): string =>
-    value.replace(/\\\\/g, '/').replace(/^\.\//, '').replace(/^data\//i, '').replace(/^\/+/, '').trim();
+    value.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^data\//i, '').replace(/^\/+/, '').trim();
   const original = normalize(texturePath);
   if (!original) return undefined;
 
