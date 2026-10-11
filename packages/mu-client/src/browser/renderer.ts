@@ -137,13 +137,18 @@ export class MuRenderer {
       // can use its own texture without creating thousands of material/draw calls.
       const cellSize = 128;
       const textureCount = tileTextures.length;
-      const columns = Math.max(1, Math.ceil(Math.sqrt(textureCount)));
-      const rows = Math.max(1, Math.ceil(textureCount / columns));
+      const fallbackIndex = textureCount;
+      const atlasSlotCount = textureCount + 1;
+      const columns = Math.max(1, Math.ceil(Math.sqrt(atlasSlotCount)));
+      const rows = Math.max(1, Math.ceil(atlasSlotCount / columns));
       const atlasCanvas = document.createElement('canvas');
       atlasCanvas.width = columns * cellSize;
       atlasCanvas.height = rows * cellSize;
       const atlasContext = atlasCanvas.getContext('2d');
       if (!atlasContext) throw new Error('2D canvas context unavailable for terrain texture atlas');
+      // Unmapped texture indices get a neutral earth tile instead of leaving holes in the world.
+      atlasContext.fillStyle = '#625b46';
+      atlasContext.fillRect((fallbackIndex % columns) * cellSize, Math.floor(fallbackIndex / columns) * cellSize, cellSize, cellSize);
       for (let textureIndex = 0; textureIndex < tileTextures.length; textureIndex++) {
         const image = tileTextures[textureIndex];
         if (!image) continue;
@@ -174,9 +179,9 @@ export class MuRenderer {
           const tileIndex = (offset + z) * this.stats.width + offset + x;
           const textureIndex = map.layer1[tileIndex] ?? 0;
           tileIndices.push(textureIndex);
-          if (textureIndex >= textureCount || !tileTextures[textureIndex]) continue;
-          const col = textureIndex % columns;
-          const row = Math.floor(textureIndex / columns);
+          const atlasIndex = textureIndex < textureCount && tileTextures[textureIndex] ? textureIndex : fallbackIndex;
+          const col = atlasIndex % columns;
+          const row = Math.floor(atlasIndex / columns);
           // A tiny inset avoids sampling pixels from adjacent atlas cells.
           const insetU = 0.5 / atlasCanvas.width;
           const insetV = 0.5 / atlasCanvas.height;
