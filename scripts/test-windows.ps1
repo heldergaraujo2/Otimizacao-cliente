@@ -59,7 +59,7 @@ try {
 
   $previewDataDir = "assets-local/demo-data"
   if (Test-Path -LiteralPath $resolvedDataDir -PathType Container) {
-    $relativeDataDir = [IO.Path]::GetRelativePath($RepoRoot, (Resolve-Path -LiteralPath $resolvedDataDir).Path)
+    $relativeDataDir = Resolve-Path -LiteralPath $resolvedDataDir -Relative
     $relativeDataDir = $relativeDataDir -replace "\\", "/"
     Write-Host ""
     Write-Host "Scanning real MU data: $resolvedDataDir" -ForegroundColor Cyan
