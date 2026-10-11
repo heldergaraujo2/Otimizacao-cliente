@@ -41,7 +41,7 @@ async function startServerProcess(extraArgs: string[] = []): Promise<ServerProce
     throw new Error(`server CLI not built: ${SERVER_CLI_PATH} — run "npm run build" first`);
   }
 
-  const child = spawn(process.execPath, [SERVER_CLI.pathname, '--host', '127.0.0.1', '--status-json', ...extraArgs], {
+  const child = spawn(process.execPath, [SERVER_CLI_PATH, '--host', '127.0.0.1', '--status-json', ...extraArgs], {
     stdio: ['ignore', 'pipe', 'pipe'],
   }) as ServerChild;
 
@@ -144,7 +144,7 @@ test('the process refuses to start twice on the same port (busy port is a real e
   try {
     const second = spawn(
       process.execPath,
-      [SERVER_CLI.pathname, '--host', '127.0.0.1', '--connect-port', String(first.connectPort), '--game-port', '0'],
+      [SERVER_CLI_PATH, '--host', '127.0.0.1', '--connect-port', String(first.connectPort), '--game-port', '0'],
       { stdio: ['ignore', 'pipe', 'pipe'] },
     );
     const exitCode = await new Promise<number | null>((resolve) => second.once('exit', (code) => resolve(code)));
