@@ -263,6 +263,29 @@ function pumpPing(): void {
 
 window.addEventListener('keydown', (event) => pressed.add(event.key.length === 1 ? event.key.toLowerCase() : event.key));
 window.addEventListener('keyup', (event) => pressed.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key));
+
+// Touch D-pad (see index.html): a phone has no keyboard, and this page walks with WASD/arrows. The
+// buttons only feed the same `pressed` set, so prediction, the walk clip and the server round trip are
+// exactly the keyboard path. `pointerdown`/`pointerup` with capture also covers a finger sliding off a
+// button, which is the usual way a touch D-pad gets stuck.
+const pad = document.querySelector<HTMLDivElement>('#pad');
+for (const button of pad?.querySelectorAll<HTMLButtonElement>('button[data-key]') ?? []) {
+  const key = button.dataset.key!;
+  const press = (event: PointerEvent): void => {
+    event.preventDefault();
+    button.setPointerCapture?.(event.pointerId);
+    pressed.add(key);
+  };
+  const release = (event: PointerEvent): void => {
+    event.preventDefault();
+    pressed.delete(key);
+  };
+  button.addEventListener('pointerdown', press);
+  button.addEventListener('pointerup', release);
+  button.addEventListener('pointercancel', release);
+  button.addEventListener('lostpointercapture', release);
+  button.addEventListener('contextmenu', (event) => event.preventDefault());
+}
 window.addEventListener('beforeunload', () => session?.close());
 realDataToggle.addEventListener('change', () => {
   assetIndexLine = 'checking…';

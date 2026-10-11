@@ -111,9 +111,13 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 
 `main.ts` escolhe automaticamente o primeiro `.bmd` do índice de assets quando o campo de modelo está
 vazio (com o diretório de dados ligado) e cai no modelo de fixture, com o motivo no log, se o modelo
-configurado falhar. Verificação pelo host público do preview: HTTP 200 em `/`, `/@vite/client`,
+configurado falhar. `index.html` ganhou um **D-pad de toque** (▲◀▶▼) que alimenta o mesmo conjunto
+`pressed` do teclado, com captura de ponteiro (dedo saindo do botão não trava) e regras responsivas para
+o HUD não ficar sob o pad em telas estreitas. Verificação pelo host público do preview: HTTP 200 em `/`, `/@vite/client`,
 `/src/browser/*.ts` e `/assets/*`; upgrade WebSocket **101** com `Host`/`Origin` públicos; sessão
 completa (login 0 → DarkKnight → monstros → 10 caminhadas → walk aceito). `npm test` → **126/126**.
+A interação com o dedo em si (layout do D-pad, toque) não é verificável aqui — a sandbox não tem
+navegador — e está marcada como `PENDENTE DE VALIDAÇÃO HUMANA`.
 
 ### Monsters that wander — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 

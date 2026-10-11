@@ -104,7 +104,8 @@ npm run server -- --npc-tick 300                 # monsters wander every 300 ms 
 node packages/mu-server/dist/main.js --help      # all flags
 ```
 
-Browser renderer (implemented; needs a GPU in the *viewer's* machine):
+Browser renderer (implemented; needs a GPU in the *viewer's* machine). Movement is WASD/arrows — and
+on a phone, the on-screen D-pad in the bottom-right corner, which drives the same input path:
 
 ```bash
 # terminal 1 — game server + WebSocket gateway, also serving a data directory (binds 0.0.0.0:7788)

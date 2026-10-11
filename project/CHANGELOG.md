@@ -12,6 +12,13 @@ Concrete changes with the evidence that proves them. Newest first.
   generated fixture model. Typing a path on a phone was the only thing standing between the user and the
   real demo file; the field stays editable, and a model that fails to load now falls back to the fixture
   mesh (with the reason in the log) instead of leaving the scene without a character.
+- `packages/mu-client/index.html` + `main.ts`: **touch D-pad** (▲◀▶▼, bottom-right). A phone has no
+  keyboard and the page walks with WASD/arrows, so the buttons feed the very same `pressed` set the
+  keyboard handlers use — prediction, the walk clip and the server round trip are literally the same code
+  path. `pointerdown` adds the key, `pointerup`/`pointercancel`/`lostpointercapture` remove it (with
+  pointer capture, so a finger sliding off a button cannot get stuck), `touch-action: none` keeps the
+  page from scrolling, and a `@media (max-width: 760px)` block lets the HUD and the status card wrap
+  instead of sitting under the pad on a narrow screen.
 - `package-lock.json`: regenerated, which adds the `bin` entry (`mu-server` → `dist/main.js`) that the
   cycle-9 `package.json` change had introduced but never committed.
 
@@ -30,6 +37,10 @@ was moved onto the remote tip with `git update-ref` (no `reset --hard`, no `clea
   200, `/src/browser/*.ts` 200, `/assets/*` 200 (six demo files), WebSocket upgrade **101** with
   `Host`/`Origin` set to the preview host, then a full session over that path — login `0`, character
   `DarkKnight`, monsters in scope, 10 monster walks, `walk` accepted, no errors in the Vite log.
+- The served page was re-fetched after the touch-control change and contains the pad markup, the
+  `data-key` buttons and the media query; the module served by Vite contains the pointer handlers.
+  **Not verified here:** the actual finger interaction — this sandbox has no browser (no Chromium, no
+  Playwright cache), so the visual/touch check is `PENDENTE DE VALIDAÇÃO HUMANA`.
 
 ## 2026-10-10 — cycle 12: monsters that wander (server tick + broadcast)
 
