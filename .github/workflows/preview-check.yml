@@ -1,0 +1,115 @@
+name: Preview check (from GitHub's network)
+
+# Why this exists: a preview URL can look healthy from inside the sandbox (same machine, same loopback)
+# while behaving differently for a caller on another network. GitHub's runners sit on a different network,
+# so what this job observes IS the edge's real answer — and the answer is interpreted, not just printed:
+#
+#   200               openly reachable (public traffic allowed)
+#   403               edge is up and serving the sandbox, but public access is restricted: callers need the
+#                     `e2b-traffic-access-token` header (E2B `allowPublicTraffic: false`). This is the
+#                     expected state here — the Arena preview panel carries the authorization, a bare URL
+#                     pasted into another client does not.
+#   502 / 000 / other the sandbox is paused or unreachable → start it with node scripts/dev-preview.mjs.
+#
+# So: green with 403 means "the sandbox is running behind a token-protected edge (use the Arena preview)";
+# red means "the preview is not serving at all".
+#
+# How to point it at a URL: mention a single https:// URL anywhere in the commit message of the push that
+# should trigger it, or set the repository variable PREVIEW_URL (`gh variable set PREVIEW_URL
+# --body https://…` — needs Actions-variables write permission; the Arena GitHub integration answers 403
+# "Resource not accessible by integration", so in this environment the commit-message channel is the one
+# that works). With neither, the job skips instead of failing — and says so, because a green run that
+# checked nothing must not be mistaken for evidence.
+#
+# Every HTTP status is published twice — as an annotation (visible in the run summary / `gh run view`)
+# and in a commit status description — because the workflow log lives in blob storage that the sandbox
+# itself cannot read. The annotations are the channel that survives the sandbox's egress allowlist.
+#
+# Note: the sandbox is paused between agent sessions (see docs/BUILD_AND_RUN.md §"Sandbox lifecycle"), so
+# a red run usually means "the sandbox is not running right now" — start the preview and re-run.
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  fetch:
+    name: Fetch the preview URL from the public internet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the preview URL
+        id: url
+        env:
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          REPO_VARIABLE: ${{ vars.PREVIEW_URL }}
+        run: |
+          url="$REPO_VARIABLE"
+          source="repository variable PREVIEW_URL"
+          if [ -z "$url" ]; then
+            url="$(printf '%s' "$HEAD_MESSAGE" | grep -oE 'https://[A-Za-z0-9._~:/?#@!$&*+,;=%-]+' | head -1 || true)"
+            source="commit message"
+          fi
+          url="${url%/}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          if [ -z "$url" ]; then
+            echo "::warning::No preview URL to check — this run verified NOTHING. Mention an https:// URL in the commit message or set the repository variable PREVIEW_URL."
+          else
+            echo "Checking $url (from the $source)."
+          fi
+
+      - name: Fetch the URLs and classify the edge's answer
+        if: steps.url.outputs.url != ''
+        env:
+          URL: ${{ steps.url.outputs.url }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -u
+          fetch() { # fetch <path> <outfile> ; prints "<status> <remote_ip> <time_total>"
+            curl -sS -L --retry 3 --retry-delay 2 --retry-all-errors --max-time 45 \
+              -o "$2" -w '%{http_code} %{remote_ip} %{time_total}' "$URL$1" || echo '000 - -'
+          }
+
+          read -r page_status page_ip page_time <<< "$(fetch / /tmp/page.html)"
+          read -r index_status index_ip _ <<< "$(fetch /assets/ /tmp/assets.json)"
+          read -r health_status health_ip _ <<< "$(fetch /health /tmp/health.json)"
+
+          # a couple of edge headers, so the answer can be attributed without reading the blocked job log
+          server_header="$(curl -sSI --max-time 20 "$URL/" 2>/dev/null | grep -i '^server:' | head -1 | tr -d '\r' || true)"
+          marker="missing"; grep -qi 'MU-REENGINEER' /tmp/page.html 2>/dev/null && marker="found"
+          asset_count="$(grep -o '"count": *[0-9]\+' /tmp/assets.json 2>/dev/null | head -1 || true)"
+
+          echo "GET $URL/        -> HTTP $page_status (ip $page_ip, ${page_time}s, marker $marker)"
+          echo "GET $URL/assets/ -> HTTP $index_status (ip $index_ip) ${asset_count:-}"
+          echo "GET $URL/health -> HTTP $health_status (ip $health_ip)"
+          echo "edge header: ${server_header:-none}"
+          echo "::notice title=Preview external check::$URL -> page=$page_status index=$index_status health=$health_status marker=$marker ${asset_count:-} ${server_header:-}"
+
+          # Publish the result where the sandbox can read it: the run log lives in blob storage that the
+          # sandbox's egress allowlist blocks, but annotations and commit statuses come from github.com.
+          state="failure"; description="preview not serving: page=$page_status index=$index_status health=$health_status"
+          if [ "$page_status" = "200" ] && [ "$index_status" = "200" ] && [ "$health_status" = "200" ]; then
+            state="success"
+            description="openly reachable: page=200 index=200 health=200"
+          elif [ "$page_status" = "403" ] && [ "$index_status" = "403" ] && [ "$health_status" = "403" ]; then
+            # expected here: E2B public access is restricted, the Arena preview carries the token
+            state="success"
+            description="edge up, public access restricted (403) - use the Arena preview panel"
+          fi
+
+          curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$REPO/statuses/$SHA" \
+            -d "{\"state\":\"$state\",\"context\":\"preview-check/external\",\"description\":\"$description\",\"target_url\":\"https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID\"}" \
+            > /tmp/status.json || true
+
+          if [ "$state" = "failure" ]; then
+            echo "::error title=Preview not serving::$description — a paused sandbox answers 502 and cannot serve its URL; start it with node scripts/dev-preview.mjs and re-run this workflow."
+            exit 1
+          fi

@@ -1,0 +1,39 @@
+{
+  "name": "@mu-reengineer/client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MU-REENGINEER client: headless game core (session, world state) plus the browser renderer",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "vite",
+    "build:browser": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test \"dist/test/*.test.js\""
+  },
+  "dependencies": {
+    "@mu-reengineer/formats": "*",
+    "@mu-reengineer/protocol": "*",
+    "three": "^0.186.1",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@mu-reengineer/server": "*",
+    "@types/three": "^0.186.0",
+    "@types/ws": "^8.18.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

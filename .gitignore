@@ -1,0 +1,49 @@
+# ---- MU-REENGINEER: never commit game assets, builds or caches ----
+# Local game data (MU Red Season 20 / Season 6 patch / any proprietary resource)
+assets-local/
+MU-REENGINEER-DATA/
+*.wkr
+Data/
+!docs/**/Data/
+
+# Third-party reference checkouts are ignored; only the pins and its README are committed.
+# (Ignore the directory *contents*, never the directory itself, otherwise git cannot re-include files.)
+third_party/*
+!third_party/README.md
+!third_party/PINS.json
+
+# Build output
+dist/
+build/
+out/
+release/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Test/benchmark artifacts
+coverage/
+tests/fixtures/
+benchmarks/results/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Secrets - never commit
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+
+# Python helper caches
+__pycache__/
+*.pyc
+.venv/

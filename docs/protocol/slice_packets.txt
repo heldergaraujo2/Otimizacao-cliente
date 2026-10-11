@@ -1,0 +1,114 @@
+##### C->S
+  RequestCharacterList: hdr=C1HeaderWithSubCode code=F3 sub=00 len=5
+     idx=4 Byte Language
+  SelectCharacter: hdr=C1HeaderWithSubCode code=F3 sub=03 len=14
+     idx=4 String Name len=10
+  CreateCharacter: hdr=C1HeaderWithSubCode code=F3 sub=01 len=15
+     idx=4 String Name len=10
+     idx=14 Enum Class len=6
+  DeleteCharacter: hdr=C1HeaderWithSubCode code=F3 sub=02 len=24
+     idx=4 String Name len=10
+     idx=14 String SecurityCode
+  Ping: hdr=C3HeaderWithSubCode code=0E sub=00 len=12
+     idx=4 IntegerLittleEndian TickCount
+     idx=8 ShortLittleEndian AttackSpeed
+##### S->C
+  ServerListResponse: NOT FOUND
+  ConnectionInfo: NOT FOUND
+  GameServerEntered: hdr=C1HeaderWithSubCode code=F1 sub=00 len=12
+     idx=4 Boolean Success def=true
+     idx=5 ShortBigEndian PlayerId
+     idx=7 String VersionString len=5
+     idx=7 Binary Version len=5
+  CharacterInformation: hdr=C3HeaderWithSubCode code=F3 sub=03 len=72
+     idx=4 Byte X
+     idx=5 Byte Y
+     idx=6 ShortLittleEndian MapId
+     idx=8 LongBigEndian CurrentExperience
+     idx=16 LongBigEndian ExperienceForNextLevel
+     idx=24 ShortLittleEndian LevelUpPoints
+     idx=26 ShortLittleEndian Strength
+     idx=28 ShortLittleEndian Agility
+     idx=30 ShortLittleEndian Vitality
+     idx=32 ShortLittleEndian Energy
+     idx=34 ShortLittleEndian CurrentHealth
+     idx=36 ShortLittleEndian MaximumHealth
+     idx=38 ShortLittleEndian CurrentMana
+     idx=40 ShortLittleEndian MaximumMana
+     idx=42 ShortLittleEndian CurrentShield
+     idx=44 ShortLittleEndian MaximumShield
+     idx=46 ShortLittleEndian CurrentAbility
+     idx=48 ShortLittleEndian MaximumAbility
+     idx=52 IntegerLittleEndian Money
+     idx=56 Enum HeroState
+     idx=57 Enum Status
+     idx=58 ShortLittleEndian UsedFruitPoints
+     idx=60 ShortLittleEndian MaxFruitPoints
+     idx=62 ShortLittleEndian Leadership
+     idx=64 ShortLittleEndian UsedNegativeFruitPoints
+     idx=66 ShortLittleEndian MaxNegativeFruitPoints
+     idx=68 Byte InventoryExtensions
+  ServerMessage: hdr=C1Header code=0D sub=None len=None
+     idx=3 Enum Type
+     idx=4 String Message
+  ShowMessage: NOT FOUND
+  WeatherStatusUpdate: hdr=C1Header code=0F sub=None len=4
+     idx=3 Byte Weather len=4
+     idx=3 Byte Variation len=4
+  MapChanged: hdr=C3HeaderWithSubCode code=1C sub=0F len=15
+     idx=4 Boolean IsMapChange def=true
+     idx=5 ShortBigEndian MapNumber
+     idx=7 Byte PositionX
+     idx=8 Byte PositionY
+     idx=9 Byte Rotation
+  AddCharactersToScope: hdr=C2Header code=12 sub=None len=18
+     idx=4 Byte CharacterCount
+     idx=5 Structure[] Characters
+     idx=0 ShortBigEndian Id
+     idx=2 Byte CurrentPositionX
+     idx=3 Byte CurrentPositionY
+     idx=4 Binary Appearance len=18
+     idx=22 String Name len=10
+     idx=32 Byte TargetPositionX
+     idx=33 Byte TargetPositionY
+     idx=34 Byte Rotation len=4
+     idx=34 Enum HeroState len=4
+     idx=35 Byte EffectCount
+     idx=36 Structure[] Effects
+     idx=0 Byte Id
+  ObjectWalked: hdr=C1Header code=D4 sub=None len=4
+     idx=2 Byte HeaderCode
+     idx=3 ShortBigEndian ObjectId
+     idx=5 Byte TargetX
+     idx=6 Byte TargetY
+     idx=7 Byte TargetRotation len=4
+     idx=7 Byte StepCount len=4
+     idx=8 Binary StepData
+  CharacterList: hdr=C1HeaderWithSubCode code=F3 sub=00 len=34
+     idx=4 Enum UnlockFlags
+     idx=5 Byte MoveCnt
+     idx=6 Byte CharacterCount
+     idx=7 Boolean IsVaultExtended
+     idx=8 Structure[] Characters
+     idx=0 Byte SlotIndex
+     idx=1 String Name len=10
+     idx=12 ShortLittleEndian Level
+     idx=14 Enum Status len=4
+     idx=14 Boolean IsItemBlockActive len=4
+     idx=15 Binary Appearance len=18
+     idx=33 Enum GuildPosition
+  LoginResponse: hdr=C1HeaderWithSubCode code=F1 sub=01 len=5
+     idx=4 Enum Success
+##### CS
+  ServerListResponse: hdr=C2HeaderWithSubCode code=F4 sub=06 len=4
+     idx=5 ShortBigEndian ServerCount
+     idx=7 Structure[] Servers
+     idx=0 ShortLittleEndian ServerId
+     idx=2 Byte LoadPercentage
+  ServerListRequest: hdr=C1HeaderWithSubCode code=F4 sub=06 len=4
+  ConnectionInfo: hdr=C1HeaderWithSubCode code=F4 sub=03 len=22
+     idx=4 String IpAddress len=16
+     idx=20 ShortLittleEndian Port
+  ConnectionInfoRequest: hdr=C1HeaderWithSubCode code=F4 sub=03 len=6
+     idx=4 ShortLittleEndian ServerId
+  Hello: hdr=C1HeaderWithSubCode code=00 sub=01 len=4

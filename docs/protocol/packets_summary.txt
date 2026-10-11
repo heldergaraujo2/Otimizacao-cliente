@@ -1,0 +1,110 @@
+
+########## CLIENT->SERVER ##########
+  LoginLongPassword: header=C3HeaderWithSubCode code=F1 sub=01 len=60
+      [4] Binary Username len=10
+      [14] Binary Password len=20
+      [34] IntegerBigEndian TickCount
+      [38] Binary ClientVersion len=5
+      [43] Binary ClientSerial len=16
+  LoginShortPassword: header=C3HeaderWithSubCode code=F1 sub=01 len=50
+      [4] Binary Username len=10
+      [14] Binary Password len=10
+      [24] IntegerBigEndian TickCount
+      [28] Binary ClientVersion len=5
+      [33] Binary ClientSerial len=16
+  LogOut: header=C3HeaderWithSubCode code=F1 sub=02 len=5
+      [4] Enum Type
+  WalkRequest: header=C1Header code=D4 sub=None len=4
+      [3] Byte SourceX
+      [4] Byte SourceY
+      [5] Byte StepCount len=4
+      [5] Byte TargetRotation len=4
+      [6] Binary Directions
+  ClientReadyAfterMapChange: header=C1HeaderWithSubCode code=F3 sub=12 len=4
+  CharacterListRequest: NOT FOUND
+  CharacterSelectRequest: NOT FOUND
+  CharacterCreateRequest: NOT FOUND
+  CharacterDeleteRequest: NOT FOUND
+  Ping: header=C3HeaderWithSubCode code=0E sub=00 len=12
+      [4] IntegerLittleEndian TickCount
+      [8] ShortLittleEndian AttackSpeed
+  EnterGateRequest: header=C3Header code=1C sub=None len=8
+      [4] ShortLittleEndian GateNumber
+      [6] Byte TeleportTargetX
+      [7] Byte TeleportTargetY
+  TalkToNpcRequest: header=C3Header code=30 sub=None len=5
+      [3] ShortBigEndian NpcId
+
+########## SERVER->CLIENT ##########
+  ServerListResponse: NOT FOUND
+  ConnectionInfo: NOT FOUND
+  LoginResponse: header=C1HeaderWithSubCode code=F1 sub=01 len=5
+      [4] Enum Success
+  CharacterList: header=C1HeaderWithSubCode code=F3 sub=00 len=34
+      [4] Enum UnlockFlags
+      [5] Byte MoveCnt
+      [6] Byte CharacterCount
+      [7] Boolean IsVaultExtended
+      [8] Structure[] Characters
+      [0] Byte SlotIndex
+      [1] String Name len=10
+      [12] ShortLittleEndian Level
+      [14] Enum Status len=4
+      [14] Boolean IsItemBlockActive len=4
+      [15] Binary Appearance len=18
+      [33] Enum GuildPosition
+  CharacterSelectResponse: NOT FOUND
+  MapChanged: header=C3HeaderWithSubCode code=1C sub=0F len=15
+      [4] Boolean IsMapChange
+      [5] ShortBigEndian MapNumber
+      [7] Byte PositionX
+      [8] Byte PositionY
+      [9] Byte Rotation
+  ObjectWalked: header=C1Header code=D4 sub=None len=4
+      [2] Byte HeaderCode
+      [3] ShortBigEndian ObjectId
+      [5] Byte TargetX
+      [6] Byte TargetY
+      [7] Byte TargetRotation len=4
+      [7] Byte StepCount len=4
+      [8] Binary StepData
+  ShowMessage: NOT FOUND
+  AddCharactersToScope: header=C2Header code=12 sub=None len=18
+      [4] Byte CharacterCount
+      [5] Structure[] Characters
+      [0] ShortBigEndian Id
+      [2] Byte CurrentPositionX
+      [3] Byte CurrentPositionY
+      [4] Binary Appearance len=18
+      [22] String Name len=10
+      [32] Byte TargetPositionX
+      [33] Byte TargetPositionY
+      [34] Byte Rotation len=4
+      [34] Enum HeroState len=4
+      [35] Byte EffectCount
+      [36] Structure[] Effects
+      [0] Byte Id
+  AddCharacterToScope: NOT FOUND
+  MapChange: NOT FOUND
+  PlayerShopClosed: header=C1HeaderWithSubCode code=3F sub=3 len=7
+      [4] Boolean Success
+      [5] ShortBigEndian PlayerId
+  ObjectGotKilled: header=C1Header code=17 sub=None len=9
+      [3] ShortBigEndian KilledId
+      [5] ShortBigEndian SkillId
+      [7] ShortBigEndian KillerId
+  ChangeMap: NOT FOUND
+  WeatherStatusUpdate: header=C1Header code=0F sub=None len=4
+      [3] Byte Weather len=4
+      [3] Byte Variation len=4
+  GameServerEntered: header=C1HeaderWithSubCode code=F1 sub=00 len=12
+      [4] Boolean Success
+      [5] ShortBigEndian PlayerId
+      [7] String VersionString len=5
+      [7] Binary Version len=5
+  ExitViewport: NOT FOUND
+
+########## CONNECT SERVER ##########
+  ServerListRequest: header=C1HeaderWithSubCode code=F4 sub=06 len=4
+  ConnectionInfoRequest: header=C1HeaderWithSubCode code=F4 sub=03 len=6
+      [4] ShortLittleEndian ServerId

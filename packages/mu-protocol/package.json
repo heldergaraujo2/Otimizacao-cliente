@@ -1,0 +1,26 @@
+{
+  "name": "@mu-reengineer/protocol",
+  "version": "0.1.0",
+  "description": "MU Online wire protocol: framing, XOR3/XOR32 and SimpleModulus encryption, packet codecs (OpenMU-compatible subset)",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/test/*.test.js\"",
+    "bench": "node dist/bench/protocol-bench.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

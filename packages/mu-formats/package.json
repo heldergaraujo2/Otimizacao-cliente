@@ -1,0 +1,28 @@
+{
+  "name": "@mu-reengineer/formats",
+  "version": "0.1.0",
+  "description": "MU Online resource formats: FileCryptor/Bux/LEA/ModulusCryptor ciphers, BMD models, OZJ/OZT/OZB textures, ATT/MAP/OBJ terrain",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./png": {
+      "types": "./dist/png.d.ts",
+      "import": "./dist/png.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/test/*.test.js\"",
+    "bench": "node dist/bench/formats-bench.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

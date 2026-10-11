@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MU-REENGINEER client</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0d1117;
+        color: #e6edf3;
+        overflow: hidden;
+      }
+      #view {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        margin: 0;
+        padding: 10px 12px;
+        background: rgba(3, 8, 20, 0.72);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre;
+      }
+      #login {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        padding: 12px;
+        background: rgba(3, 8, 20, 0.78);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        font-size: 12px;
+      }
+      #login label {
+        display: grid;
+        gap: 4px;
+      }
+      input,
+      button {
+        font: inherit;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #30363d;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+      button {
+        background: #1f6feb;
+        border-color: #1f6feb;
+        cursor: pointer;
+      }
+      #status {
+        position: fixed;
+        right: 12px;
+        top: 12px;
+        max-width: 46ch;
+        padding: 8px 10px;
+        background: rgba(3, 8, 20, 0.78);
+        border: 1px solid #1f6feb55;
+        border-radius: 8px;
+        font-size: 12px;
+        text-align: right;
+      }
+      /* Touch controls: on a phone there is no keyboard, and this page walks with WASD/arrows.
+         The buttons feed the very same `pressed` set the keyboard handlers use. */
+      #pad {
+        position: fixed;
+        right: 14px;
+        bottom: 14px;
+        display: grid;
+        grid-template-columns: repeat(3, 58px);
+        grid-template-rows: repeat(3, 58px);
+        gap: 6px;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #pad button {
+        font-size: 20px;
+        line-height: 1;
+        padding: 0;
+        background: rgba(31, 111, 235, 0.55);
+        border: 1px solid #1f6feb;
+        border-radius: 10px;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #pad button:active {
+        background: rgba(63, 185, 80, 0.75);
+      }
+      #pad .north { grid-area: 1 / 2; }
+      #pad .west  { grid-area: 2 / 1; }
+      #pad .east  { grid-area: 2 / 3; }
+      #pad .south { grid-area: 3 / 2; }
+      /* Small screens (phones): the HUD would grow wide enough to sit under the D-pad, so it wraps. */
+      @media (max-width: 760px) {
+        #hud {
+          max-width: 58vw;
+          font-size: 10.5px;
+          white-space: pre-wrap;
+        }
+        #login {
+          max-width: 56vw;
+          font-size: 11px;
+        }
+        #status {
+          max-width: 42vw;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+
+    <form id="login">
+      <strong>MU-REENGINEER</strong>
+      <label>gateway<input id="gateway" value="/ws" /></label>
+      <label>account<input id="user" value="demo" /></label>
+      <label>password<input id="pass" type="password" value="demo" /></label>
+      <label title="Requires the gateway to be started with --data-dir (or MU_REENGINEER_DATA)">real data (via /assets)<input id="realdata" type="checkbox" checked /></label>
+      <label>world index<input id="world" value="1" /></label>
+      <label>model path (optional)<input id="model" placeholder="Player/Player.bmd" /></label>
+      <button type="submit">Connect</button>
+    </form>
+
+    <pre id="hud">booting…</pre>
+    <div id="status">loading renderer…</div>
+
+    <div id="pad" aria-label="movement">
+      <button class="north" type="button" data-key="ArrowUp" title="north">▲</button>
+      <button class="west" type="button" data-key="ArrowLeft" title="west">◀</button>
+      <button class="east" type="button" data-key="ArrowRight" title="east">▶</button>
+      <button class="south" type="button" data-key="ArrowDown" title="south">▼</button>
+    </div>
+
+    <script type="module" src="/src/browser/main.ts"></script>
+  </body>
+</html>
