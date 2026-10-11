@@ -21,6 +21,8 @@ jobs:
         run: npm run build
       - name: Run automated tests
         run: npm test
+      - name: Build browser client bundle
+        run: npm run build:browser -w @mu-reengineer/client
       - name: Verify resource fixtures can be generated and parsed (disk round trip)
         run: node tools/mu-cli/dist/index.js gen-fixtures --out tests/fixtures
       - name: Scan the generated fixtures with the CLI (classification report)
