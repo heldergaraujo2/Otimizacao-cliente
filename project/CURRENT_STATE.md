@@ -90,6 +90,8 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 
 ### `packages/mu-client` — EM ANDAMENTO (core + renderer implemented, visuals unverified)
 
+- 2026-10-11: extracted browser-safe `DEFAULT_PATHS` into `src/resources/paths.ts` to avoid importing the Node filesystem loader from browser resources. GitHub source was re-read after the edit; browser build/tests have not yet been executed for this change.
+
 - **Core (tested):** `ClientSession` (login, character list, selection, client ready, walk, ping, event
   streams for scope/walked/server message, buffered `waitFor`), ConnectServer client
   (`fetchServerList`, `fetchConnectionInfo`) and `connectTcpSession`.
