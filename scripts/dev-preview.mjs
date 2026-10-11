@@ -228,7 +228,12 @@ function stopAll(code = 0) {
 }
 
 function start(name, command, args) {
-  const child = spawn(command, args, { cwd: root, stdio: ['ignore', 'inherit', 'inherit'] });
+  const child = spawn(command, args, {
+    cwd: root,
+    stdio: ['ignore', 'inherit', 'inherit'],
+    // On Windows, npm is normally npm.cmd; Node cannot spawn that shim without a shell.
+    shell: process.platform === 'win32',
+  });
   children.push(child);
   child.once('exit', (code) => {
     if (shuttingDown) return;
@@ -243,7 +248,7 @@ function start(name, command, args) {
 start('gateway', 'node', ['tools/mu-gateway/dist/index.js', '--ws-port', String(gatewayPort), '--server', '--data-dir', dataDir]);
 
 // `vite --host 0.0.0.0 --port N`: binds all interfaces so the platform proxy (and the phone) can reach it.
-start('client', 'npm', ['run', 'dev', '-w', '@mu-reengineer/client', '--', '--host', '0.0.0.0', '--port', String(clientPort)]);
+start('client', process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev', '-w', '@mu-reengineer/client', '--', '--host', '0.0.0.0', '--port', String(clientPort)]);
 
 const sandboxId = process.env.E2B_SANDBOX_ID;
 console.log('');
