@@ -73,12 +73,20 @@ node scripts/dev-preview.mjs --rebuild     # from scratch: npm ci + build + demo
 node scripts/dev-preview.mjs               # already built: just start both and print the URLs
 ```
 
-Background processes do **not** survive snapshots — restart both. The page is then reachable at
-`https://5173-<E2B_SANDBOX_ID>.e2b.app` (`printenv E2B_SANDBOX_ID`); the client connects to `/ws`
-relative to the page, so no localhost address is ever involved. Verified with the public `Host`/`Origin`
-headers against port 5173: page/modules/assets 200, WebSocket upgrade 101, full session including
-monsters. The sandbox itself cannot reach that hostname (egress allowlist), so the platform edge is the
-only unverifiable hop from here.
+After a resume, **verify first**: `node scripts/dev-preview.mjs --check` (6 checks, exit 1 when the
+preview is down) and only then `--rebuild` if it failed. The page is reachable at
+`https://5173-<E2B_SANDBOX_ID>.e2b.app` while the sandbox is **running**; the client connects to `/ws`
+relative to the page, so no localhost address is ever involved.
+
+Lifecycle facts (E2B docs, 2026-10-11 — full table in `docs/BUILD_AND_RUN.md` §"Sandbox lifecycle"): a
+sandbox runs continuously for 1 h (Hobby) or 24 h (Pro); when the timeout expires it is *paused* here
+(state kept, same id on resume, filesystem restored, memory not), and a **paused sandbox cannot serve its
+URL** — that is the `502 Sandbox not found` seen between sessions, not a deletion. Paused sandboxes are
+kept indefinitely and are not billed. `E2B_API_KEY` is absent and `api.e2b.dev` is unreachable from
+inside, so the timeout/`onTimeout`/`autoResume`/plan values **cannot be read or changed in-sandbox**.
+The platform re-runs the process started through it, which is why `scripts/dev-preview.mjs` was already
+running after the last resume. External (non-loopback) proof is the **Preview check** workflow, driven by
+the repository variable `PREVIEW_URL`; it is expected to be red while the sandbox is paused.
 
 ## Environment reminders
 

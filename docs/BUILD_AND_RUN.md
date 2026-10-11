@@ -104,6 +104,54 @@ npm run server -- --npc-tick 300                 # monsters wander every 300 ms 
 node packages/mu-server/dist/main.js --help      # all flags
 ```
 
+### Sandbox lifecycle and preview availability (read this before promising a link)
+
+Official rules — E2B docs, fetched 2026-10-11 (`/sandbox`, `/sandbox/persistence`, FAQ
+"How long does a sandbox live?"):
+
+| Rule | Value |
+| --- | --- |
+| Continuous runtime per plan | **Hobby 1 h**, Pro 24 h, Enterprise custom. The plan is *not* readable from inside. |
+| Pausing/resuming | resets that window, so one sandbox can be reused indefinitely by pausing |
+| Paused sandboxes | kept **indefinitely**, never killed by E2B on its own, **not billed**, do not count towards concurrency — but they **cannot execute**, so their URLs do not serve |
+| Timeout expiring | `onTimeout: 'kill'` (the default) destroys the sandbox — a killed sandbox cannot be resumed; `onTimeout: 'pause'` preserves the filesystem **and** the memory |
+| `autoResume` | a paused sandbox wakes on the next SDK call or HTTP request to one of its URLs |
+| Default timeout | 5 minutes when the creator does not set one (`timeoutMs` / `setTimeout`) |
+
+**What can be read from inside this sandbox (verified):** `E2B_SANDBOX_ID`, `E2B_TEMPLATE_ID` and
+`E2B_SANDBOX=true` are set; **`E2B_API_KEY` is not**, and `https://api.e2b.dev` is unreachable (egress
+allowlist). The timeout value, the `lifecycle` (`onTimeout` / `autoResume`) and the plan therefore
+**cannot be read — let alone changed — from inside the sandbox**; that needs the E2B control plane from
+the outside with an API key. The in-sandbox agent (envd) answers on `127.0.0.1:49983` (`GET /health`
+→ `204 No Content`) and exposes execution, not lifecycle settings.
+
+**What was observed (2026-10-11):** the sandbox pauses between agent turns and resumes with the **same
+id** and the workspace restored. Boot times seen: `03:54:20` and `04:02:23` — a fresh VM each resume, so
+what survives is the *filesystem*, not the memory. Since a killed sandbox "cannot be resumed" and loses
+its state, the sandbox is being **paused, not killed**. The platform also **re-runs the process
+registered through it**: minutes after the 04:02 boot, `node scripts/dev-preview.mjs` was already running
+(`ppid 1`, from `/tmp/arena-workspace/procs/…`) before any command was issued. That is the pause/resume
+strategy this project relies on — start the preview through the platform's process mechanism and it comes
+back by itself.
+
+**While paused, the preview URL answers `502 Bad Gateway — Sandbox not found`:** the edge has nothing to
+route to. That is the cause of the error seen between sessions; it is **not** proof that the sandbox was
+deleted, and it is not a fixed URL problem.
+
+**Consequences for a shared link (never promise permanence):** `https://<port>-<sandbox id>.e2b.app` is
+routable only while the sandbox is running, and the plan's continuous-runtime cap (1 h Hobby / 24 h Pro)
+applies on top. After every resume:
+
+```bash
+node scripts/dev-preview.mjs --check     # 6 checks: TCP 5173/7788, page, /assets, /health, WebSocket 101
+node scripts/dev-preview.mjs --rebuild   # only when the check fails
+```
+
+External proof from a different network is the **Preview check** workflow: it fetches the URL from a
+GitHub runner (so the sandbox's own loopback cannot fake it). Point it at a URL through the repository
+variable `PREVIEW_URL` (`gh variable set PREVIEW_URL --body https://…`) or by mentioning one `https://`
+URL in a commit message, then watch the run — a red run while the sandbox is paused is expected.
+
 ### One command (recommended after any resume)
 
 ```bash

@@ -1,0 +1,73 @@
+name: Preview check (from GitHub's network)
+
+# Why this exists: a preview URL can look healthy from inside the sandbox (same machine, same loopback)
+# while being unreachable for a phone on mobile data. GitHub's runners sit on a different network, so a
+# successful fetch here IS the external evidence — and a failure here is a real finding, not a guess.
+#
+# How to point it at a URL: set the repository variable PREVIEW_URL (`gh variable set PREVIEW_URL
+# --body https://…`), or mention a single https:// URL anywhere in the commit message of the push that
+# should trigger it. With neither, the job skips instead of failing.
+#
+# Note: the sandbox is paused between agent sessions (see docs/BUILD_AND_RUN.md §7), so a red run usually
+# means "the sandbox is not running right now" — start the preview and re-run the workflow.
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    name: Fetch the preview URL from the public internet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve the preview URL
+        id: url
+        env:
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          REPO_VARIABLE: ${{ vars.PREVIEW_URL }}
+        run: |
+          url="$REPO_VARIABLE"
+          source="repository variable PREVIEW_URL"
+          if [ -z "$url" ]; then
+            url="$(printf '%s' "$HEAD_MESSAGE" | grep -oE 'https://[A-Za-z0-9._~:/?#@!$&*+,;=%-]+' | head -1 || true)"
+            source="commit message"
+          fi
+          url="${url%/}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          if [ -z "$url" ]; then
+            echo "No preview URL to check (set the repository variable PREVIEW_URL or mention one in the commit message)."
+          else
+            echo "Checking $url (from the $source)."
+          fi
+
+      - name: Fetch page, asset index and health endpoint
+        if: steps.url.outputs.url != ''
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          set -u
+          page_status=$(curl -sS -L --retry 3 --retry-delay 2 --retry-all-errors --max-time 45 \
+            -o /tmp/page.html -w '%{http_code}' "$URL/" || echo 000)
+          echo "GET $URL/ -> HTTP $page_status"
+          if grep -qi 'MU-REENGINEER' /tmp/page.html; then
+            echo "page body: MU-REENGINEER marker found ($(wc -c < /tmp/page.html) bytes)"
+          else
+            echo "page body: marker NOT found, first 300 bytes:"
+            head -c 300 /tmp/page.html || true
+            echo
+          fi
+
+          index_status=$(curl -sS -L --retry 2 --retry-delay 2 --retry-all-errors --max-time 45 \
+            -o /tmp/assets.json -w '%{http_code}' "$URL/assets/" || echo 000)
+          echo "GET $URL/assets/ -> HTTP $index_status $(head -c 160 /tmp/assets.json 2>/dev/null | tr -d '\n' || true)"
+
+          health_status=$(curl -sS -L --retry 2 --retry-delay 2 --retry-all-errors --max-time 45 \
+            -o /tmp/health.json -w '%{http_code}' "$URL/health" || echo 000)
+          echo "GET $URL/health -> HTTP $health_status $(head -c 200 /tmp/health.json 2>/dev/null | tr -d '\n' || true)"
+
+          if [ "$page_status" != "200" ] || [ "$index_status" != "200" ] || [ "$health_status" != "200" ]; then
+            echo "::error::the preview did not answer 200 externally — the sandbox is probably paused; start it with node scripts/dev-preview.mjs and re-run this workflow"
+            exit 1
+          fi
+          echo "External check passed: the preview answered 200 from GitHub's network."

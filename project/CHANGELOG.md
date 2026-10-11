@@ -2,6 +2,60 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-11 — cycle 15: sandbox lifecycle understood, preview `--check` and external verification
+
+**Why:** the preview link returned `502 Bad Gateway — Sandbox not found` between sessions. The question
+was not "how do we rebuild it" but "what does the platform actually guarantee", so this cycle starts from
+the official E2B documentation instead of guesses.
+
+**Findings (documented in `docs/BUILD_AND_RUN.md` §"Sandbox lifecycle and preview availability")**
+
+- Continuous runtime is capped by the plan — **1 h (Hobby) / 24 h (Pro)**; pausing and resuming resets the
+  window, and paused sandboxes are kept **indefinitely**, are **not billed** and do not count towards
+  concurrency, but **cannot execute**, so their URLs do not serve.
+- `onTimeout: 'kill'` is the destructive default; `onTimeout: 'pause'` keeps the filesystem **and** the
+  memory. `autoResume` wakes a paused sandbox on the next SDK call or HTTP request to one of its URLs.
+  The default timeout is 5 minutes when the creator does not set one.
+- **Readable from inside:** `E2B_SANDBOX_ID`, `E2B_TEMPLATE_ID`, `E2B_SANDBOX=true`, and the in-sandbox
+  agent (envd) on `127.0.0.1:49983` (`GET /health` → 204). **Not readable:** the timeout value, the
+  `lifecycle` (`onTimeout` / `autoResume`) and the plan — `E2B_API_KEY` is absent and `api.e2b.dev` is
+  unreachable (curl `SSL_ERROR_SYSCALL`), so only the control plane from outside can read or change them.
+- **Observed:** the sandbox resumes with the **same id** and a restored filesystem, on a fresh VM (boots
+  at `03:54:20` and `04:02:23`; `/proc/uptime` and `btime` agree), which rules out `kill` (a killed sandbox
+  cannot be resumed) and shows the memory is not what survives. The platform **re-executed the registered
+  process** after the resume: `node scripts/dev-preview.mjs` was already running with `ppid 1` from
+  `/tmp/arena-workspace/procs/…`, minutes after boot and before any command was issued.
+- **Cause of the 502:** the sandbox was **paused** at the time, and a paused sandbox has no running
+  instance for the edge to route to. The URL itself was never "wrong"; it only exists while the sandbox runs.
+
+**Changes**
+
+- `scripts/dev-preview.mjs --check`: verifies a running preview with six checks — TCP on both ports, `GET /`
+  (200 + `MU-REENGINEER` marker), `GET /assets/` (200 + file count), `GET /health` (200 + `ok: true`) and a
+  **raw WebSocket handshake** expecting `101` (implemented with `node:http` + 16 random bytes in base64 for
+  `Sec-WebSocket-Key`, no dependency). Exit 0/1 with actionable next steps.
+- `.github/workflows/preview-check.yml`: fetches the preview URL **from a GitHub runner**, i.e. from a
+  different network, and checks the page, the asset index and `/health`, failing the run when any of them
+  is not 200. The URL comes from the repository variable `PREVIEW_URL` (set: `gh variable set`) or from the
+  first `https://` URL in the commit message; with neither, the job skips.
+
+**Evidence**
+
+- `node scripts/dev-preview.mjs --check` → **6/6 ok** (including `WebSocket /ws upgrades to 101`), and the
+  negative cases behave as designed: an unused port reports `5 of 6 checks failed` with the restart
+  commands, and a busy port is refused with `gateway port 7788 is already in use (EADDRINUSE)`.
+- `btime`/`uptime` cross-check of the 04:02:23 boot; `ps` tree showing the platform re-running
+  `scripts/dev-preview.mjs` → gateway + Vite after the resume; `ss -ltnp` showing `0.0.0.0:5173` and
+  `0.0.0.0:7788` owned by those processes.
+- The external fetch result is recorded in the workflow run linked from the cycle's report (the workflow
+  is on the branch; a red run while the sandbox is paused is the expected behaviour).
+
+**Limitation (unchanged, by platform design)**
+
+The preview cannot be made permanent: it lives while the sandbox runs, and the sandbox lifecycle is owned
+by the platform (timeout, plan cap, pause policy). Everything needed to bring it back in one command, and
+to prove it is back from outside, is now in the repository.
+
 ## 2026-10-11 — cycle 14: one-command preview (`scripts/dev-preview.mjs`)
 
 **Why:** a paused/resumed sandbox stops every background process, and the previous instructions left the
