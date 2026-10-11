@@ -17,6 +17,7 @@ import {
   TwFlags,
   type AttData,
   type BmdModel,
+  type DecodedImage,
   type MapData,
   type MeshGeometry,
   type ObjData,
@@ -91,6 +92,7 @@ export class MuRenderer {
   private readonly clock = new THREE.Clock();
   private readonly tileSpan: number;
   private model?: BmdModel;
+  private characterTexture?: THREE.DataTexture;
   private skinnedRoot?: THREE.Object3D;
   private bones: THREE.Bone[] = [];
   private actionsPerSecond = 8;
@@ -186,8 +188,25 @@ export class MuRenderer {
    * Sets the model used for every character. Existing characters are rebuilt, so the call is safe at
    * any time (for example after the real model arrives from the gateway).
    */
-  setCharacterModel(model: BmdModel): void {
+  setCharacterModel(model: BmdModel, textureImage?: DecodedImage): void {
     this.model = model;
+    this.characterTexture?.dispose();
+    this.characterTexture = undefined;
+    if (textureImage) {
+      const texture = new THREE.DataTexture(
+        textureImage.rgba,
+        textureImage.width,
+        textureImage.height,
+        THREE.RGBAFormat,
+        THREE.UnsignedByteType,
+      );
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps = true;
+      texture.needsUpdate = true;
+      this.characterTexture = texture;
+    }
     this.animation.action = 0;
     this.animation.key = 0;
     this.skinnedRoot = this.buildCharacterModel();
@@ -419,7 +438,7 @@ export class MuRenderer {
 
     const skinned = new THREE.SkinnedMesh(
       buffer,
-      new THREE.MeshStandardMaterial({ color: 0xcfcfd8, roughness: 0.6, metalness: 0.15, flatShading: false }),
+      new THREE.MeshStandardMaterial({ color: this.characterTexture ? 0xffffff : 0xcfcfd8, map: this.characterTexture, roughness: 0.75, metalness: 0.05, flatShading: false }),
     );
     skinned.name = 'skin';
     skinned.add(bones[0]!);
