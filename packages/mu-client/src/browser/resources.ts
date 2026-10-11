@@ -48,6 +48,43 @@ export interface AssetTerrain {
   paths: { att: string; map: string; obj: string };
 }
 
+/** Loads the world's available Tile* images in natural filename order.
+ *
+ * This is a practical fallback for data-only packages: the original client has a per-world
+ * texture table, but that table is not present as a separate file in many distributions.
+ * Keep failed decodes as empty slots so MAP texture indices remain stable.
+ */
+export async function fetchWorldTileTextures(
+  source: AssetSource,
+  worldIndex: number,
+  files: string[],
+): Promise<Array<DecodedImage | undefined>> {
+  const prefix = `World${worldIndex}/`;
+  const candidates = files.filter((file) =>
+    file.replace(/\\/g, '/').toLowerCase().startsWith(prefix.toLowerCase()) &&
+    /\/Tile[^/]+\.(ozj|ozt|ozb|tga|dds)$/i.test(file.replace(/\\/g, '/')),
+  );
+  // Prefer OZJ when the same base name also exists as OZT; sort numerically (01, 02, …, 10).
+  const byStem = new Map<string, string>();
+  for (const file of candidates.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
+    const normalized = file.replace(/\\/g, '/');
+    const stem = normalized.slice(0, normalized.lastIndexOf('.')).toLowerCase();
+    const existing = byStem.get(stem);
+    if (!existing || (existing.toLowerCase().endsWith('.ozt') && normalized.toLowerCase().endsWith('.ozj'))) {
+      byStem.set(stem, normalized);
+    }
+  }
+  const paths = [...byStem.values()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return Promise.all(paths.map(async (path) => {
+    try {
+      return await fetchTextureImage(source, path);
+    } catch (error) {
+      console.warn(`[terrain] texture unavailable: ${path}`, error);
+      return undefined;
+    }
+  }));
+}
+
 /** Loads a terrain bundle for a world index through the gateway asset route. */
 export async function fetchTerrain(source: AssetSource, worldIndex: number): Promise<AssetTerrain> {
   const paths = { att: DEFAULT_PATHS.att(worldIndex), map: DEFAULT_PATHS.map(worldIndex), obj: DEFAULT_PATHS.obj(worldIndex) };

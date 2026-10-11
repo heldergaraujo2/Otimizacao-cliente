@@ -120,7 +120,7 @@ export class MuRenderer {
   }
 
   /** Rebuilds terrain + objects from parsed data. Safe to call again (map change / new data). */
-  setTerrain(att: AttData, map: MapData, obj: ObjData, source: string): void {
+  setTerrain(att: AttData, map: MapData, obj: ObjData, source: string, tileTextures?: Array<DecodedImage | undefined>): void {
     this.terrainRoot.clear();
     this.stats.terrainSource = source;
     this.stats.width = att.width + 1; // the format stores the count minus one (see mu-formats)
@@ -132,46 +132,130 @@ export class MuRenderer {
     const span = Math.min(this.tileSpan, this.stats.width);
     const offset = Math.floor((this.stats.width - span) / 2);
 
-    // One segment per tile gives (span+1)^2 vertices; rotateX(-PI/2) puts the plane on the XZ ground
-    // with the front face up, so vertex (ix, iy) lands on tile (offset+ix, offset+iy) when the mesh is
-    // centred on the sampled window.
-    const geometry = new THREE.PlaneGeometry(span, span, span, span);
-    geometry.rotateX(-Math.PI / 2);
-
-    const colors = new Float32Array(geometry.attributes.position!.count * 3);
-    const color = new THREE.Color();
-    for (let i = 0; i < geometry.attributes.position!.count; i++) {
-      const ix = i % (span + 1);
-      const iy = Math.floor(i / (span + 1));
-      const tileIndex = (offset + Math.min(iy, this.stats.height - 1)) * this.stats.width + (offset + Math.min(ix, this.stats.width - 1));
-      const flags = att.attributes[tileIndex] ?? 0;
-      if (flags & TwFlags.Water) {
-        this.stats.waterTiles += 1;
-        color.setHex(TILE_COLOR.water!);
-      } else if (flags & TwFlags.NoGround) {
-        color.setHex(TILE_COLOR.noGround!);
-      } else if (flags & TwFlags.SafeZone) {
-        this.stats.safeTiles += 1;
-        color.setHex(TILE_COLOR.safe!);
-      } else {
-        color.setHex(TILE_COLOR.ground!);
+    if (tileTextures?.some((image) => image !== undefined)) {
+      // MU MAP layer 1 stores a per-tile texture index. Build a small atlas so each tile
+      // can use its own texture without creating thousands of material/draw calls.
+      const cellSize = 128;
+      const textureCount = tileTextures.length;
+      const fallbackIndex = textureCount;
+      const atlasSlotCount = textureCount + 1;
+      const columns = Math.max(1, Math.ceil(Math.sqrt(atlasSlotCount)));
+      const rows = Math.max(1, Math.ceil(atlasSlotCount / columns));
+      const atlasCanvas = document.createElement('canvas');
+      atlasCanvas.width = columns * cellSize;
+      atlasCanvas.height = rows * cellSize;
+      const atlasContext = atlasCanvas.getContext('2d');
+      if (!atlasContext) throw new Error('2D canvas context unavailable for terrain texture atlas');
+      // Unmapped texture indices get a neutral earth tile instead of leaving holes in the world.
+      atlasContext.fillStyle = '#625b46';
+      atlasContext.fillRect((fallbackIndex % columns) * cellSize, Math.floor(fallbackIndex / columns) * cellSize, cellSize, cellSize);
+      for (let textureIndex = 0; textureIndex < tileTextures.length; textureIndex++) {
+        const image = tileTextures[textureIndex];
+        if (!image) continue;
+        const imageCanvas = document.createElement('canvas');
+        imageCanvas.width = image.width;
+        imageCanvas.height = image.height;
+        const imageContext = imageCanvas.getContext('2d');
+        if (!imageContext) continue;
+        imageContext.putImageData(new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height), 0, 0);
+        atlasContext.drawImage(imageCanvas, (textureIndex % columns) * cellSize, Math.floor(textureIndex / columns) * cellSize, cellSize, cellSize);
       }
-      // shading from the texture indices so both MAP layers are visible in the palette
-      const textureIndex = (map.layer1[tileIndex] ?? 0) + (map.layer2[tileIndex] ?? 0);
-      color.multiplyScalar(0.75 + ((textureIndex % 8) / 8) * 0.5);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      const atlas = new THREE.CanvasTexture(atlasCanvas);
+      atlas.colorSpace = THREE.SRGBColorSpace;
+      atlas.magFilter = THREE.LinearFilter;
+      atlas.minFilter = THREE.LinearFilter;
+      atlas.generateMipmaps = false;
 
-    const terrain = new THREE.Mesh(
-      geometry,
-      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.05 }),
-    );
-    terrain.name = 'terrain';
-    terrain.position.set(offset + span / 2, 0, offset + span / 2);
-    this.terrainRoot.add(terrain);
+      const positions: number[] = [];
+      const uvs: number[] = [];
+      const tileIndices: number[] = [];
+      const half = span / 2;
+      const addVertex = (x: number, z: number, u: number, v: number): void => {
+        positions.push(x - half, 0, z - half);
+        uvs.push(u, v);
+      };
+      for (let z = 0; z < span; z++) {
+        for (let x = 0; x < span; x++) {
+          const tileIndex = (offset + z) * this.stats.width + offset + x;
+          const textureIndex = map.layer1[tileIndex] ?? 0;
+          tileIndices.push(textureIndex);
+          const atlasIndex = textureIndex < textureCount && tileTextures[textureIndex] ? textureIndex : fallbackIndex;
+          const col = atlasIndex % columns;
+          const row = Math.floor(atlasIndex / columns);
+          // A tiny inset avoids sampling pixels from adjacent atlas cells.
+          const insetU = 0.5 / atlasCanvas.width;
+          const insetV = 0.5 / atlasCanvas.height;
+          const u0 = col / columns + insetU;
+          const u1 = (col + 1) / columns - insetU;
+          const v0 = 1 - (row + 1) / rows + insetV;
+          const v1 = 1 - row / rows - insetV;
+          // Counter-clockwise when viewed from above (+Y), so the ground's front faces are visible.
+          addVertex(x, z, u0, v1);
+          addVertex(x, z + 1, u0, v0);
+          addVertex(x + 1, z, u1, v1);
+          addVertex(x + 1, z, u1, v1);
+          addVertex(x, z + 1, u0, v0);
+          addVertex(x + 1, z + 1, u1, v0);
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.computeVertexNormals();
+      const terrain = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.95, metalness: 0 }));
+      terrain.name = 'terrain-textured';
+      terrain.position.set(offset + half, 0, offset + half);
+      this.terrainRoot.add(terrain);
+
+      for (let i = 0; i < tileIndices.length; i++) {
+        const flags = att.attributes[(offset + Math.floor(i / span)) * this.stats.width + offset + (i % span)] ?? 0;
+        if (flags & TwFlags.Water) this.stats.waterTiles += 1;
+        if (flags & TwFlags.SafeZone) this.stats.safeTiles += 1;
+      }
+    } else {
+      // One segment per tile gives (span+1)^2 vertices; rotateX(-PI/2) puts the plane on the XZ ground
+      // with the front face up, so vertex (ix, iy) lands on tile (offset+ix, offset+iy) when the mesh is
+      // centred on the sampled window.
+      const geometry = new THREE.PlaneGeometry(span, span, span, span);
+      geometry.rotateX(-Math.PI / 2);
+  
+      const colors = new Float32Array(geometry.attributes.position!.count * 3);
+      const color = new THREE.Color();
+      for (let i = 0; i < geometry.attributes.position!.count; i++) {
+        const ix = i % (span + 1);
+        const iy = Math.floor(i / (span + 1));
+        const tileIndex = (offset + Math.min(iy, this.stats.height - 1)) * this.stats.width + (offset + Math.min(ix, this.stats.width - 1));
+        const flags = att.attributes[tileIndex] ?? 0;
+        if (flags & TwFlags.Water) {
+          this.stats.waterTiles += 1;
+          color.setHex(TILE_COLOR.water!);
+        } else if (flags & TwFlags.NoGround) {
+          color.setHex(TILE_COLOR.noGround!);
+        } else if (flags & TwFlags.SafeZone) {
+          this.stats.safeTiles += 1;
+          color.setHex(TILE_COLOR.safe!);
+        } else {
+          color.setHex(TILE_COLOR.ground!);
+        }
+        // shading from the texture indices so both MAP layers are visible in the palette
+        const textureIndex = (map.layer1[tileIndex] ?? 0) + (map.layer2[tileIndex] ?? 0);
+        color.multiplyScalar(0.75 + ((textureIndex % 8) / 8) * 0.5);
+        colors[i * 3] = color.r;
+        colors[i * 3 + 1] = color.g;
+        colors[i * 3 + 2] = color.b;
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  
+      const terrain = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.05 }),
+      );
+      terrain.name = 'terrain';
+      terrain.position.set(offset + span / 2, 0, offset + span / 2);
+      this.terrainRoot.add(terrain);
+  
+  
+    }
 
     // objects from the OBJ record list (positions are tile coordinates, z is height)
     const objectMaterial = new THREE.MeshStandardMaterial({ color: 0x8a6f4e, roughness: 0.8 });

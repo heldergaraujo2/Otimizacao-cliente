@@ -30,7 +30,7 @@ import { DIRECTION_OFFSETS } from '@mu-reengineer/protocol';
 import { ClientSession } from '../core/session.js';
 import { connectWebSocketTransport } from './transport.js';
 import { MuRenderer } from './renderer.js';
-import { fetchAssetIndex, fetchModel, fetchTextureImage, fetchTerrain, resolveModelTexturePath } from './resources.js';
+import { fetchAssetIndex, fetchModel, fetchTextureImage, fetchTerrain, fetchWorldTileTextures, resolveModelTexturePath } from './resources.js';
 
 // The direction table comes from the protocol package — the same one the server validates with, so
 // input mapping, prediction and authority can never disagree (0 = north … 7 = north-west).
@@ -127,8 +127,10 @@ async function loadResources(): Promise<void> {
   const worldIndex = Number(worldIndexInput.value) || 1;
   try {
     const terrain = await fetchTerrain(assetSource, worldIndex);
-    renderer.setTerrain(terrain.att, terrain.map, terrain.obj, `real data: ${terrain.paths.att}`);
-    log(`loaded real terrain ${terrain.paths.att} (${terrain.obj.objects.length} objects)`);
+    const tileTextures = await fetchWorldTileTextures(assetSource, worldIndex, index.files);
+    renderer.setTerrain(terrain.att, terrain.map, terrain.obj, `real data: ${terrain.paths.att}`, tileTextures);
+    const decodedTextures = tileTextures.filter((texture) => texture !== undefined).length;
+    log(`loaded real terrain ${terrain.paths.att} (${terrain.obj.objects.length} objects, ${decodedTextures}/${tileTextures.length} tile textures)`);
   } catch (error: unknown) {
     log(`real terrain failed (${(error as Error).message}) — using fixtures`);
     applyFixtureTerrain();
