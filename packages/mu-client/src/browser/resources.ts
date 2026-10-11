@@ -9,7 +9,7 @@
 
 import { parseAtt, parseBmd, parseMap, parseObj, type AttData, type BmdModel, type MapData, type ObjData } from '@mu-reengineer/formats';
 
-import { DEFAULT_PATHS } from '../resources/loader.js';
+import { DEFAULT_PATHS } from '../resources/paths.js';
 
 export interface AssetSource {
   baseUrl: string;
