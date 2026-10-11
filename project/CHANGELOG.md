@@ -57,6 +57,24 @@ the official E2B documentation instead of guesses.
   recorded in the commit status `preview-check/external` of the latest pushed sha and in the run
   annotations — see the cycle report for the numbers.
 
+**External verification (the real numbers, after the first runs)**
+
+- Run `38110806699` failed with no capturable detail; the workflow was then changed to publish the edge's
+  answer as a **commit status and annotations** (`gh api …/commits/<sha>/statuses`), because GitHub's job
+  logs live in blob storage that the sandbox's egress allowlist blocks (`gh api …/jobs/<id>/logs` → 0
+  bytes). Run `38110857672` skipped: the repository variable cannot be created with the Arena integration
+  token (403 "Resource not accessible by integration"), so the **commit-message channel** is the usable one.
+- The authoritative observation, from a GitHub runner: **`page=403 index=403 health=403`**. E2B documents
+  exactly this answer for a sandbox created with `allowPublicTraffic: false`, where every request must
+  carry the `e2b-traffic-access-token` header. The same requests that reach the port directly with the
+  public `Host` header answer **200** (page) and **101** (WebSocket upgrade) — so the application serves
+  correctly; what the external caller hits is the *edge's authorization*, not a broken app.
+- **Correction to the earlier assumption:** the bare preview URL is *not* an open public link, and a green
+  "the URL works" claim would have been wrong. What is true: the app works (verified against the port,
+  including the public host/origin), the platform's preview panel is the authorized path the user opens,
+  and an unauthenticated external client gets 403. The workflow now encodes that: 403 = running behind the
+  protected edge (green), 502 = paused (red), 200 = openly reachable (green).
+
 **Limitation (unchanged, by platform design)**
 
 The preview cannot be made permanent: it lives while the sandbox runs, and the sandbox lifecycle is owned

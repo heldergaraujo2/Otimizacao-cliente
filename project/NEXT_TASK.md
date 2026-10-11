@@ -85,8 +85,13 @@ URL** — that is the `502 Sandbox not found` seen between sessions, not a delet
 kept indefinitely and are not billed. `E2B_API_KEY` is absent and `api.e2b.dev` is unreachable from
 inside, so the timeout/`onTimeout`/`autoResume`/plan values **cannot be read or changed in-sandbox**.
 The platform re-runs the process started through it, which is why `scripts/dev-preview.mjs` was already
-running after the last resume. External (non-loopback) proof is the **Preview check** workflow, driven by
-the repository variable `PREVIEW_URL`; it is expected to be red while the sandbox is paused.
+running after the last resume. **The public URL is token-protected:** from a GitHub runner it answers
+`403` (E2B `allowPublicTraffic: false` → `e2b-traffic-access-token` required), so the preview is reached
+**through the Arena preview panel**, not by pasting the bare URL elsewhere — the URL is a credential, not a
+public link. The **Preview check** workflow makes that observable and classifies it (403 = running behind
+the protected edge, 502 = paused, 200 = openly reachable); it is driven by mentioning an `https://` URL in
+a commit message (the repository-variable channel needs Actions-variable permission the integration token
+does not have).
 
 ## Environment reminders
 

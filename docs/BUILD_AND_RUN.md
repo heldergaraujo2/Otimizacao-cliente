@@ -140,17 +140,35 @@ deleted, and it is not a fixed URL problem.
 
 **Consequences for a shared link (never promise permanence):** `https://<port>-<sandbox id>.e2b.app` is
 routable only while the sandbox is running, and the plan's continuous-runtime cap (1 h Hobby / 24 h Pro)
-applies on top. After every resume:
+applies on top. There is a **second restriction, verified from outside**: this sandbox's public URL
+answers **403** to callers that do not carry the platform's traffic token (E2B `allowPublicTraffic: false`
+→ `e2b-traffic-access-token`). Observed from a GitHub runner — a different network than the sandbox —
+`page=403 index=403 health=403`, while the very same requests reaching the port directly with the public
+`Host` header answer 200 (page) and 101 (WebSocket upgrade). **The bare URL is therefore not a public
+link**: open the preview through the Arena preview panel, which carries the authorization, and treat the
+URL like a credential (do not assume a link pasted into another client, another device or another network
+will work). After every resume:
 
 ```bash
 node scripts/dev-preview.mjs --check     # 6 checks: TCP 5173/7788, page, /assets, /health, WebSocket 101
 node scripts/dev-preview.mjs --rebuild   # only when the check fails
 ```
 
-External proof from a different network is the **Preview check** workflow: it fetches the URL from a
-GitHub runner (so the sandbox's own loopback cannot fake it). Point it at a URL through the repository
-variable `PREVIEW_URL` (`gh variable set PREVIEW_URL --body https://…`) or by mentioning one `https://`
-URL in a commit message, then watch the run — a red run while the sandbox is paused is expected.
+External observation from a different network is the **Preview check** workflow, which fetches the URL
+from a GitHub runner and *classifies* the edge's answer:
+
+| Answer | Meaning | Workflow |
+| --- | --- | --- |
+| `403` | edge is up and the sandbox is running, but public access is restricted (needs the traffic token) — **the expected state here** | green |
+| `200` | openly reachable (public traffic allowed) | green |
+| `502` | the sandbox is paused ("Sandbox not found") | red, with the restart command |
+| `000`/other | unreachable | red |
+
+Point it at a URL by mentioning one `https://` URL in a commit message, or set the repository variable
+`PREVIEW_URL` (`gh variable set PREVIEW_URL --body https://…` — the Arena GitHub integration answers 403
+*for that API*, so the commit-message channel is the one that works in this environment). The result is
+published as the commit status `preview-check/external` and as run annotations, because the workflow's own
+log lives in blob storage that the sandbox's egress allowlist cannot read.
 
 ### One command (recommended after any resume)
 
