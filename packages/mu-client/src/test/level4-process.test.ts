@@ -91,7 +91,13 @@ function stopServerProcess(server: ServerProcess): Promise<number | null> {
     }, 5000);
     server.child.once('exit', (code, signal) => {
       clearTimeout(timer);
-      assert.equal(signal, null, 'the process must exit through its own handler, not be killed by a signal');
+      // Windows does not deliver POSIX signals to child processes: child.kill('SIGTERM') terminates
+      // the process at the OS layer and reports signal='SIGTERM'. On POSIX, require our graceful handler.
+      if (process.platform !== 'win32') {
+        assert.equal(signal, null, 'the process must exit through its own handler, not be killed by a signal');
+      } else {
+        assert.equal(signal, 'SIGTERM', 'Windows reports the requested termination signal for child processes');
+      }
       resolve(code);
     });
     server.child.kill('SIGTERM');
