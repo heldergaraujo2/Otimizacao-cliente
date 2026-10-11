@@ -18,6 +18,9 @@ import { join, relative as relativePath, resolve as resolvePath, sep } from 'nod
 
 import { DEFAULT_PATHS } from './paths.js';
 
+// Preserve the historical loader-module export for existing callers and tests.
+export { DEFAULT_PATHS } from './paths.js';
+
 import {
   decodeDds,
   decodeOzb,
