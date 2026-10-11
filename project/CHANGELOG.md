@@ -1,3 +1,16 @@
+## 2026-10-11 — Windows CI: cross-platform test fixes
+
+**Changes**
+- Added a Windows GitHub Actions job that executes `scripts/test-windows.ps1 -SkipInstall -NoPreview` on `windows-latest`, so the real PowerShell validation script itself is exercised in CI.
+- Replaced URL `.pathname` with Node's `fileURLToPath` for spawning the process-level server tests on Windows.
+- Made the resource-loader environment-root assertion platform-neutral by comparing with `path.resolve`.
+- Adjusted the process-shutdown test for Windows child-process semantics: Windows reports `SIGTERM` as the child exit signal and does not provide the POSIX graceful-signal behavior tested on Linux. POSIX still requires the server's graceful shutdown log.
+
+**Evidence**
+- First Windows CI run revealed 3 cross-platform test failures; the next run isolated the process path conversion and Windows signal semantics. Both were corrected.
+- GitHub Actions run [`38163485635`](https://github.com/heldergaraujo2/Otimizacao-cliente/actions/runs/38163485635) passed on both jobs: Linux build/tests/browser bundle/fixture scan and Windows validation script, including **130 tests** and browser build.
+- This is a clean Windows runner, not the user's physical PC or GPU. Real proprietary data and visual fidelity are still pending local validation.
+
 ## 2026-10-11 — cycle 13: BMD character texture binding
 
 **Changes**
