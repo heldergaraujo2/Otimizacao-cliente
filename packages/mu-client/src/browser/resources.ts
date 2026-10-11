@@ -7,7 +7,7 @@
  * Decoding uses exactly the same `mu-formats` readers as the node side.
  */
 
-import { decodeDds, decodeOzb, decodeOzt, decodeTga, parseAtt, parseBmd, parseMap, parseObj, type AttData, type BmdModel, type DecodedImage, type MapData, type ObjData } from '@mu-reengineer/formats';
+import { decodeDds, decodeOzb, decodeOzt, decodeTga, inspectOzj, parseAtt, parseBmd, parseMap, parseObj, type AttData, type BmdModel, type DecodedImage, type MapData, type ObjData } from '@mu-reengineer/formats';
 
 import { DEFAULT_PATHS } from '../resources/paths.js';
 
@@ -97,5 +97,22 @@ export async function fetchTextureImage(source: AssetSource, relative: string): 
   if (lower.endsWith('.ozb')) return decodeOzb(await fetchAsset(source, relative));
   if (lower.endsWith('.tga')) return decodeTga(await fetchAsset(source, relative));
   if (lower.endsWith('.dds')) return decodeDds(await fetchAsset(source, relative));
-  throw new Error(`unsupported browser texture format: ${relative} (supported: .ozt, .ozb, .tga, .dds)`);
+  if (lower.endsWith('.ozj')) {
+    const container = inspectOzj(await fetchAsset(source, relative));
+    const jpegBuffer = container.jpeg.slice().buffer as ArrayBuffer;
+    const bitmap = await createImageBitmap(new Blob([jpegBuffer], { type: 'image/jpeg' }));
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('canvas 2D context is unavailable for OZJ decoding');
+      context.drawImage(bitmap, 0, 0);
+      const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height);
+      return { width: bitmap.width, height: bitmap.height, rgba: new Uint8Array(pixels.data), format: 'ozj/jpeg' };
+    } finally {
+      bitmap.close();
+    }
+  }
+  throw new Error(`unsupported browser texture format: ${relative} (supported: .ozt, .ozb, .ozj, .tga, .dds)`);
 }
