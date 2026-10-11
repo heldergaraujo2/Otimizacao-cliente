@@ -36,6 +36,21 @@ function Invoke-Check {
   Write-Host "PASS: $Label" -ForegroundColor Green
 }
 
+function Find-FreeTcpPort {
+  param([int]$StartPort)
+  for ($port = $StartPort; $port -lt ($StartPort + 50); $port++) {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
+    try {
+      $listener.Start()
+      $listener.Stop()
+      return $port
+    } catch {
+      try { $listener.Stop() } catch {}
+    }
+  }
+  throw "No free TCP port found starting at $StartPort."
+}
+
 try {
   Write-Host "MU-REENGINEER Windows validation" -ForegroundColor Cyan
   Write-Host "Repository: $RepoRoot"
@@ -75,12 +90,22 @@ try {
   Write-Host "Report: $reportPath"
   if (-not $NoPreview) {
     Write-Host ""
+    # Avoid failing when a previous gateway/client is still running; keep the Vite proxy in sync.
+    $gatewayPort = Find-FreeTcpPort 7788
+    $clientPort = Find-FreeTcpPort 5173
+    $previousGatewayPort = $env:MU_REENGINEER_GATEWAY_PORT
+    $env:MU_REENGINEER_GATEWAY_PORT = "$gatewayPort"
     Write-Host "Starting the preview using data directory: $previewDataDir"
+    Write-Host "Gateway port: $gatewayPort; browser port: $clientPort"
     Write-Host "Open the URL printed below, log in with demo / demo, and test movement."
     Write-Host "Press Ctrl+C in this window to stop the preview."
-    & node "scripts/dev-preview.mjs" "--data-dir" $previewDataDir
-    if ($LASTEXITCODE -ne 0) {
-      throw "Preview exited with code $LASTEXITCODE. See $reportPath"
+    try {
+      & node "scripts/dev-preview.mjs" "--gateway-port" "$gatewayPort" "--client-port" "$clientPort" "--data-dir" $previewDataDir
+      if ($LASTEXITCODE -ne 0) {
+        throw "Preview exited with code $LASTEXITCODE. See $reportPath"
+      }
+    } finally {
+      $env:MU_REENGINEER_GATEWAY_PORT = $previousGatewayPort
     }
   }
 } catch {
