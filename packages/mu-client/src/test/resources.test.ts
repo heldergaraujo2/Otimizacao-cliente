@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -146,6 +146,6 @@ test('textures are decoded through the loader and the directory can be listed', 
 test('a loader can be built from the environment and reports its root', async () => {
   const loader = ResourceLoader.fromEnvironment({ MU_REENGINEER_DATA: '/tmp/does-not-matter' });
   assert.ok(loader);
-  assert.equal(loader.root, '/tmp/does-not-matter');
+  assert.equal(loader.root, resolvePath('/tmp/does-not-matter'));
   assert.equal(ResourceLoader.fromEnvironment({}), undefined);
 });
