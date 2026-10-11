@@ -27,3 +27,17 @@ jobs:
         run: node tools/mu-cli/dist/index.js gen-fixtures --out tests/fixtures
       - name: Scan the generated fixtures with the CLI (classification report)
         run: node tools/mu-cli/dist/index.js scan tests/fixtures
+
+  windows:
+    name: Windows validation script
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Exercise the Windows validation script without starting a long-running preview
+        shell: powershell
+        run: .\scripts\test-windows.ps1 -SkipInstall -NoPreview
