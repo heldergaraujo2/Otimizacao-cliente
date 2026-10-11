@@ -1,3 +1,16 @@
+## 2026-10-11 — cycle 13: BMD character texture binding
+
+**Changes**
+- Added case-insensitive, Windows-separator-aware resolution of the first mesh's texture path against the gateway asset index, with common MU texture-extension candidates.
+- Added browser decoding for OZT, OZB, TGA, DDS, and OZJ/JPEG assets; decoded pixels are uploaded as a Three.js sRGB data texture and applied to the character material when available.
+- The character still loads without a texture if the path is absent or decoding fails; the UI status reports the texture error instead of failing the entire model.
+- Added four unit tests for texture-path normalization, case-insensitive lookup, extension fallback, incomplete indexes and empty paths.
+
+**Evidence**
+- GitHub Actions CI run [`38162980810`](https://github.com/heldergaraujo2/Otimizacao-cliente/actions/runs/38162980810) passed: all workspace builds, **130 automated tests**, browser production build, fixture generation and fixture scan.
+- The build emits a non-fatal bundle-size warning. No real MU Red model/texture has yet been rendered on the user's Windows GPU; real-data visual correctness remains pending human validation.
+- A failed test run caught an incorrect backslash-normalization regex; it was corrected and the subsequent CI run passed.
+
 ## 2026-10-11 — Windows validation script and browser bundle CI
 
 **Changes**
