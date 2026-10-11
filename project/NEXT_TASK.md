@@ -1,6 +1,6 @@
 # NEXT_TASK — resume here
 
-**Updated:** 2026-10-11 (browser-safe path fix validated by GitHub CI; Windows test script added) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
+**Updated:** 2026-10-11 (BMD texture binding implemented; 130 tests and browser build green; Windows test script added) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
 · **Central repo:** `https://github.com/heldergaraujo2/Otimizacao-cliente`
 
 > **Start here:** cycles 1–12 are committed and pushed (cycle 12 = monsters that wander); the last
@@ -9,7 +9,7 @@
 > monsters** → authoritative movement and monster wander → ping → logout, with a browser client that
 > renders terrain, animated skinned characters and monsters.
 >
-> **Latest CI evidence (2026-10-11):** GitHub Actions run `38162610335` passed all workspace builds, all automated tests, the browser production build, fixture generation, and fixture scan. The first run exposed a compatibility regression (the loader stopped exporting `DEFAULT_PATHS`); this was fixed and the subsequent run passed.
+> **Latest CI evidence (2026-10-11):** GitHub Actions run `38162980810` passed all workspace builds, **130 tests**, the browser production build, fixture generation and fixture scan. The BMD first-mesh texture path now resolves case-insensitively and supported textures are uploaded to the character material. Terrain tile texture-to-file mapping and the real GPU result remain unverified.
 >
 > **Immediate PC validation gate:** from the repo root on Windows, run `powershell -ExecutionPolicy Bypass -File .\\scripts\\test-windows.ps1`. It installs dependencies, runs the full build/test suite and browser bundle build, scans `Cliente\\Data` when present, writes `test-results\\windows-validation.txt`, and starts the preview. This real Windows/GPU/data check cannot be executed remotely from GitHub; it must be run on the user's PC. Then continue cycle 13, prioritising real-data visual fidelity.
 >
