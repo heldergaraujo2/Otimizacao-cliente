@@ -112,6 +112,18 @@ async function loadResources(): Promise<void> {
   }
 
   assetIndexLine = `${index.root} (${index.count} files)`;
+
+  // Convenience for touch devices (and for anybody who does not feel like typing a path): when the
+  // data directory offers a model and the field is empty, pick the first one automatically. The field
+  // stays editable, so nobody loses the ability to point at another file.
+  if (!modelPathInput.value.trim()) {
+    const model = index.files.find((file) => file.toLowerCase().endsWith('.bmd'));
+    if (model) {
+      modelPathInput.value = model;
+      log(`model auto-selected from the data directory: ${model}`);
+    }
+  }
+
   const worldIndex = Number(worldIndexInput.value) || 1;
   try {
     const terrain = await fetchTerrain(assetSource, worldIndex);
@@ -128,7 +140,8 @@ async function loadResources(): Promise<void> {
       renderer.setCharacterModel(await fetchModel(assetSource, modelPath));
       log(`loaded real model ${modelPath}`);
     } catch (error: unknown) {
-      log(`model ${modelPath} failed: ${(error as Error).message}`);
+      log(`model ${modelPath} failed: ${(error as Error).message} — using fixtures`);
+      applyFixtureModel();
     }
   } else {
     applyFixtureModel();

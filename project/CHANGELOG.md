@@ -2,6 +2,35 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-11 — cycle 13: preview robust on touch devices + local git refs restored
+
+**Changes**
+
+- `packages/mu-client/src/browser/main.ts`: when the gateway serves a data directory
+  (`--data-dir` / `MU_REENGINEER_DATA`) and the optional "model path" field is empty, the page now
+  auto-selects the first `.bmd` found in the asset index instead of silently falling back to the
+  generated fixture model. Typing a path on a phone was the only thing standing between the user and the
+  real demo file; the field stays editable, and a model that fails to load now falls back to the fixture
+  mesh (with the reason in the log) instead of leaving the scene without a character.
+- `package-lock.json`: regenerated, which adds the `bin` entry (`mu-server` → `dist/main.js`) that the
+  cycle-9 `package.json` change had introduced but never committed.
+
+**Environment note (no code impact)**
+
+The workspace snapshot that opened this cycle restored the working tree but left `.git` pointing at the
+pre-session base commit, so every file of the project showed up as untracked. Nothing was lost: the
+working tree was byte-identical to the remote tip (`ab80789`) — verified with
+`git add -A && git diff --cached FETCH_HEAD`, which listed only the two files above. The local branch ref
+was moved onto the remote tip with `git update-ref` (no `reset --hard`, no `clean`, no force push).
+
+**Evidence**
+
+- `npm test` → **126 tests, 0 failures** (protocol 43, formats 33, client 17, server 17, cli 9, gateway 7).
+- Preview verified through the exact public host the platform proxy uses: `GET /` 200, `/@vite/client`
+  200, `/src/browser/*.ts` 200, `/assets/*` 200 (six demo files), WebSocket upgrade **101** with
+  `Host`/`Origin` set to the preview host, then a full session over that path — login `0`, character
+  `DarkKnight`, monsters in scope, 10 monster walks, `walk` accepted, no errors in the Vite log.
+
 ## 2026-10-10 — cycle 12: monsters that wander (server tick + broadcast)
 
 **Changes**

@@ -107,6 +107,14 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 - **Not verified here:** WebGL output and frame times — this sandbox has no GPU/display, so Level 5/6
   are `PENDENTE DE VALIDAÇÃO HUMANA`; the page itself is served as a live preview.
 
+### Preview robusto para celular (ciclo 13) — CONCLUÍDO COM EVIDÊNCIAS (2026-10-11)
+
+`main.ts` escolhe automaticamente o primeiro `.bmd` do índice de assets quando o campo de modelo está
+vazio (com o diretório de dados ligado) e cai no modelo de fixture, com o motivo no log, se o modelo
+configurado falhar. Verificação pelo host público do preview: HTTP 200 em `/`, `/@vite/client`,
+`/src/browser/*.ts` e `/assets/*`; upgrade WebSocket **101** com `Host`/`Origin` públicos; sessão
+completa (login 0 → DarkKnight → monstros → 10 caminhadas → walk aceito). `npm test` → **126/126**.
+
 ### Monsters that wander — CONCLUÍDO COM EVIDÊNCIAS (2026-10-10)
 
 `mu-server/src/npc.ts` (`wanderNpcs` with an injected random source, movement through `World.move`),

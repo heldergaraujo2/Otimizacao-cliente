@@ -66,6 +66,21 @@
 | `.NET` builds of the reference projects | run `dotnet build` locally and report errors, if the reference client build is still wanted | Fase 3 evidence |
 | Visual/FPS validation | run the client build on a machine with GPU and record p50/p95/p99 frame times | Level 6/7 evidence, Fase 12 |
 
+## Accessing the live preview (verified 2026-10-11)
+
+```bash
+# after a snapshot: npm install && npm run build && node scripts/make-demo-data.mjs
+node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data  # process 1
+npm run dev -w @mu-reengineer/client                                                          # process 2
+```
+
+Background processes do **not** survive snapshots — restart both. The page is then reachable at
+`https://5173-<E2B_SANDBOX_ID>.e2b.app` (`printenv E2B_SANDBOX_ID`); the client connects to `/ws`
+relative to the page, so no localhost address is ever involved. Verified with the public `Host`/`Origin`
+headers against port 5173: page/modules/assets 200, WebSocket upgrade 101, full session including
+monsters. The sandbox itself cannot reach that hostname (egress allowlist), so the platform edge is the
+only unverifiable hop from here.
+
 ## Environment reminders
 
 ```bash
