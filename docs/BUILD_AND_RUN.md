@@ -22,6 +22,25 @@ npm run bench        # throughput numbers (see docs/PERFORMANCE.md)
 
 `npm install` is required after a fresh clone/restore: `node_modules/` is not committed.
 
+## 2.1 Windows validation (recommended before manual preview)
+
+From the repository root in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\\scripts\\test-windows.ps1
+```
+
+The script installs dependencies, builds every workspace, runs all tests, builds the browser bundle, and scans
+`Cliente\\Data` if that folder exists. It saves the full transcript to
+`test-results\\windows-validation.txt` and then starts the preview with the real data directory; if the data
+folder is absent, it generates and uses demo fixtures instead. Sign in with `demo / demo`. Use
+`-NoPreview` to run checks without starting the long-running preview, `-SkipInstall` if dependencies are
+already installed, or `-DataDir "D:\\path\\to\\Data"` for a different asset folder.
+
+This validates build/tests and starts the application; visual fidelity, actual touch input, GPU frame times,
+and compatibility with real encrypted MU Red assets still require inspection on the Windows PC. The script
+does not modify the original game client or proprietary data.
+
 ## 3. Per-workspace commands
 
 ```bash
