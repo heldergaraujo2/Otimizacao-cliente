@@ -1,9 +1,9 @@
-# CURRENT_STATE — what really works right now (2026-10-10)
+# CURRENT_STATE — what really works right now (2026-10-11)
 
 Evidence rule: every "CONCLUÍDO COM EVIDÊNCIAS" line below has a command that was executed and a
 result that was observed. Anything written but not executed is "EM ANDAMENTO".
 
-## Environment actually used
+## Latest repository validation (2026-10-11)\n\nGitHub Actions CI run [`38162610335`](https://github.com/heldergaraujo2/Otimizacao-cliente/actions/runs/38162610335) **passed** after fixing the browser-safe `DEFAULT_PATHS` extraction. The run reports success for all workspace builds, `npm test`, `npm run build:browser -w @mu-reengineer/client`, fixture generation and CLI fixture scan. The browser bundle is now part of CI on every push.\n\n`scripts/test-windows.ps1` now automates the same checks on Windows, scans `Cliente\\Data` if present, saves `test-results\\windows-validation.txt`, and launches the local preview. **It has not yet been executed on the user's PC**; actual Windows, GPU and proprietary-data validation remain pending.\n\n## Environment actually used
 
 | Item | Value |
 | --- | --- |
@@ -90,7 +90,7 @@ metrics     : {"connections":1,"logins":1,"loginsFailed":0,"charactersSelected":
 
 ### `packages/mu-client` — EM ANDAMENTO (core + renderer implemented, visuals unverified)
 
-- 2026-10-11: extracted browser-safe `DEFAULT_PATHS` into `src/resources/paths.ts` to avoid importing the Node filesystem loader from browser resources. GitHub source was re-read after the edit; browser build/tests have not yet been executed for this change.
+- 2026-10-11: extracted browser-safe `DEFAULT_PATHS` into `src/resources/paths.ts` to avoid importing the Node filesystem loader from browser resources. The first CI run exposed that `loader.ts` no longer re-exported `DEFAULT_PATHS`; that compatibility export was restored. Subsequent GitHub CI passed all workspace builds, tests, browser bundle build, fixture generation and scan.
 
 - **Core (tested):** `ClientSession` (login, character list, selection, client ready, walk, ping, event
   streams for scope/walked/server message, buffered `waitFor`), ConnectServer client
