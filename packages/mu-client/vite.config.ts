@@ -8,6 +8,8 @@
 
 import { defineConfig } from 'vite';
 
+const gatewayPort = Number(process.env.MU_REENGINEER_GATEWAY_PORT ?? 7788);
+
 export default defineConfig({
   root: '.',
   server: {
@@ -17,13 +19,13 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/ws': {
-        target: 'ws://127.0.0.1:7788',
+        target: `ws://127.0.0.1:${gatewayPort}`,
         ws: true,
         changeOrigin: true,
       },
       // real game data (when the gateway was started with --data-dir / MU_REENGINEER_DATA)
       '/assets': {
-        target: 'http://127.0.0.1:7788',
+        target: `http://127.0.0.1:${gatewayPort}`,
         changeOrigin: true,
       },
       '/health': {
