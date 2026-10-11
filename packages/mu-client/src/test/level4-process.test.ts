@@ -14,12 +14,14 @@ import assert from 'node:assert/strict';
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import type { Readable } from 'node:stream';
 import { access } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import { fetchConnectionInfo, fetchServerList } from '../core/connect-client.js';
 import { connectTcpSession } from '../net/tcp-session.js';
 
 const SERVER_CLI = new URL('../../../mu-server/dist/main.js', import.meta.url);
+const SERVER_CLI_PATH = fileURLToPath(SERVER_CLI);
 
 type ServerChild = ChildProcessByStdio<null, Readable, Readable>;
 
@@ -36,7 +38,7 @@ async function startServerProcess(extraArgs: string[] = []): Promise<ServerProce
   try {
     await access(SERVER_CLI);
   } catch {
-    throw new Error(`server CLI not built: ${SERVER_CLI.pathname} — run "npm run build" first`);
+    throw new Error(`server CLI not built: ${SERVER_CLI_PATH} — run "npm run build" first`);
   }
 
   const child = spawn(process.execPath, [SERVER_CLI.pathname, '--host', '127.0.0.1', '--status-json', ...extraArgs], {
