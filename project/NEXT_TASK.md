@@ -69,9 +69,8 @@
 ## Accessing the live preview (verified 2026-10-11)
 
 ```bash
-# after a snapshot: npm install && npm run build && node scripts/make-demo-data.mjs
-node tools/mu-gateway/dist/index.js --ws-port 7788 --server --data-dir assets-local/demo-data  # process 1
-npm run dev -w @mu-reengineer/client                                                          # process 2
+node scripts/dev-preview.mjs --rebuild     # from scratch: npm ci + build + demo data + both processes
+node scripts/dev-preview.mjs               # already built: just start both and print the URLs
 ```
 
 Background processes do **not** survive snapshots — restart both. The page is then reachable at

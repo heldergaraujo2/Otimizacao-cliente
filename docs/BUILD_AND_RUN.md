@@ -104,6 +104,17 @@ npm run server -- --npc-tick 300                 # monsters wander every 300 ms 
 node packages/mu-server/dist/main.js --help      # all flags
 ```
 
+### One command (recommended after any resume)
+
+```bash
+node scripts/dev-preview.mjs --rebuild        # npm ci + build + demo data, then both processes
+node scripts/dev-preview.mjs                  # just start both (ports 7788 and 5173)
+```
+
+It prints the local URL and, when `E2B_SANDBOX_ID` is set, the **public preview URL**
+(`https://<client port>-<sandbox id>.e2b.app`), refuses to start on a busy port, and stops both children
+on Ctrl+C. Background processes do not survive a sandbox pause — re-run this command after a resume.
+
 Browser renderer (implemented; needs a GPU in the *viewer's* machine). Movement is WASD/arrows — and
 on a phone, the on-screen D-pad in the bottom-right corner, which drives the same input path:
 

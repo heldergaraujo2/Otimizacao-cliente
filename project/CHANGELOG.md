@@ -2,6 +2,40 @@
 
 Concrete changes with the evidence that proves them. Newest first.
 
+## 2026-10-11 — cycle 14: one-command preview (`scripts/dev-preview.mjs`)
+
+**Why:** a paused/resumed sandbox stops every background process, and the previous instructions left the
+operator to rebuild and start two processes by hand — which is exactly what broke the preview after the
+resume ("Sandbox not found" was the *old* host being gone; the current sandbox is the same logical
+environment, resumed with fresh processes).
+
+**Changes**
+
+- `scripts/dev-preview.mjs` (new, no dependencies): starts the game server + WebSocket gateway
+  (`--server --data-dir`, default port 7788) and the Vite client (`--host 0.0.0.0`, default port 5173),
+  prints the local URL **and the public preview URL when `E2B_SANDBOX_ID` is set**, and stops both
+  children on Ctrl+C/SIGINT/SIGTERM (and if one dies). `--rebuild` chains `npm ci` → `npm run build` →
+  `make-demo-data.mjs` for a from-scratch resume. It **refuses to start on a busy port** with an explicit
+  message instead of stealing it (verified: exit 1, "gateway port 7788 is already in use"), and it fails
+  with a clear message when the build output is missing.
+
+**Evidence (all executed on the resumed sandbox)**
+
+- `npm ci` → ok (lockfile is compatible, 0 vulnerabilities); `npm run build` → clean;
+  `node scripts/make-demo-data.mjs` → 6 files; `npm test` → **126 tests, 0 failures**.
+- `node scripts/dev-preview.mjs` printed `https://5173-i1y4tsfcrh04e1xbp7t9l.e2b.app` and both
+  listeners came up (7788, 5173 on 0.0.0.0).
+- Through the public `Host` header: `/`, `/@vite/client`, `/src/browser/main.ts`, `/assets/`,
+  `/assets/World1/EncTerrain1.att`, `/assets/Player/Player.bmd`, `/health` → **200**; the served page
+  still contains the touch D-pad and the media query.
+- WebSocket upgrade **101** with the public `Host`/`Origin`, then a full session: login `0`,
+  `DarkKnight`, monsters in scope, 8 monster walks (4/4 moved), `walk` accepted → 127,125.
+
+**Note on the platform (recorded, not a defect):** background processes are restarted by the Arena
+supervisor on resume but are not guaranteed to survive indefinitely, and the preview host
+(`<port>-<sandbox id>.e2b.app`) only answers while the sandbox lives. The reproducible procedure is now
+one command, documented in `BUILD_AND_RUN.md` and remembered in `NEXT_TASK.md`.
+
 ## 2026-10-11 — cycle 13: preview robust on touch devices + local git refs restored
 
 **Changes**
