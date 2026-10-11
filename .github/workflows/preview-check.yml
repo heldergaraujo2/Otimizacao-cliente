@@ -8,12 +8,20 @@ name: Preview check (from GitHub's network)
 # --body https://…`), or mention a single https:// URL anywhere in the commit message of the push that
 # should trigger it. With neither, the job skips instead of failing.
 #
-# Note: the sandbox is paused between agent sessions (see docs/BUILD_AND_RUN.md §7), so a red run usually
-# means "the sandbox is not running right now" — start the preview and re-run the workflow.
+# Every HTTP status is published twice — as an annotation (visible in the run summary / `gh run view`)
+# and in a commit status description — because the workflow log lives in blob storage that the sandbox
+# itself cannot read. The annotations are the channel that survives the sandbox's egress allowlist.
+#
+# Note: the sandbox is paused between agent sessions (see docs/BUILD_AND_RUN.md §"Sandbox lifecycle"), so
+# a red run usually means "the sandbox is not running right now" — start the preview and re-run.
 
 on:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
 
 jobs:
   fetch:
@@ -36,7 +44,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "source=$source" >> "$GITHUB_OUTPUT"
           if [ -z "$url" ]; then
-            echo "No preview URL to check (set the repository variable PREVIEW_URL or mention one in the commit message)."
+            echo "::notice::No preview URL to check (set the repository variable PREVIEW_URL or mention one in the commit message)."
           else
             echo "Checking $url (from the $source)."
           fi
@@ -45,29 +53,49 @@ jobs:
         if: steps.url.outputs.url != ''
         env:
           URL: ${{ steps.url.outputs.url }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
         run: |
           set -u
-          page_status=$(curl -sS -L --retry 3 --retry-delay 2 --retry-all-errors --max-time 45 \
-            -o /tmp/page.html -w '%{http_code}' "$URL/" || echo 000)
-          echo "GET $URL/ -> HTTP $page_status"
-          if grep -qi 'MU-REENGINEER' /tmp/page.html; then
-            echo "page body: MU-REENGINEER marker found ($(wc -c < /tmp/page.html) bytes)"
+          fetch() { # fetch <path> <outfile> ; prints "<status> <remote_ip> <time_total>"
+            curl -sS -L --retry 3 --retry-delay 2 --retry-all-errors --max-time 45 \
+              -o "$2" -w '%{http_code} %{remote_ip} %{time_total}' "$URL$1" || echo '000 - -'
+          }
+
+          read -r page_status page_ip page_time <<< "$(fetch / /tmp/page.html)"
+          echo "GET $URL/ -> HTTP $page_status (ip $page_ip, ${page_time}s)"
+          marker="missing"
+          if grep -qi 'MU-REENGINEER' /tmp/page.html 2>/dev/null; then marker="found"; fi
+          echo "page marker: $marker, $(wc -c < /tmp/page.html 2>/dev/null || echo 0) bytes"
+
+          read -r index_status index_ip _ <<< "$(fetch /assets/ /tmp/assets.json)"
+          echo "GET $URL/assets/ -> HTTP $index_status (ip $index_ip)"
+          asset_count="$(grep -o '"count": *[0-9]\+' /tmp/assets.json 2>/dev/null | head -1 || true)"
+
+          read -r health_status health_ip _ <<< "$(fetch /health /tmp/health.json)"
+          echo "GET $URL/health -> HTTP $health_status (ip $health_ip)"
+
+          summary="page=$page_status index=$index_status health=$health_status marker=$marker assets=${asset_count:-none}"
+          echo "::notice title=Preview external check::$URL -> $summary"
+
+          # Publish the result where the sandbox can read it: the run log lives in blob storage that the
+          # sandbox's egress allowlist blocks, but annotations and commit statuses come from github.com.
+          if [ "$page_status" = "200" ] && [ "$index_status" = "200" ] && [ "$health_status" = "200" ]; then
+            state="success"
+            description="external check ok: $summary"
           else
-            echo "page body: marker NOT found, first 300 bytes:"
-            head -c 300 /tmp/page.html || true
-            echo
+            state="failure"
+            description="external check failed: $summary"
           fi
+          curl -sS -X POST -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$REPO/statuses/$SHA" \
+            -d "{\"state\":\"$state\",\"context\":\"preview-check/external\",\"description\":\"$description\",\"target_url\":\"https://github.com/$REPO/actions/runs/$GITHUB_RUN_ID\"}" \
+            > /tmp/status.json || true
 
-          index_status=$(curl -sS -L --retry 2 --retry-delay 2 --retry-all-errors --max-time 45 \
-            -o /tmp/assets.json -w '%{http_code}' "$URL/assets/" || echo 000)
-          echo "GET $URL/assets/ -> HTTP $index_status $(head -c 160 /tmp/assets.json 2>/dev/null | tr -d '\n' || true)"
-
-          health_status=$(curl -sS -L --retry 2 --retry-delay 2 --retry-all-errors --max-time 45 \
-            -o /tmp/health.json -w '%{http_code}' "$URL/health" || echo 000)
-          echo "GET $URL/health -> HTTP $health_status $(head -c 200 /tmp/health.json 2>/dev/null | tr -d '\n' || true)"
-
-          if [ "$page_status" != "200" ] || [ "$index_status" != "200" ] || [ "$health_status" != "200" ]; then
-            echo "::error::the preview did not answer 200 externally — the sandbox is probably paused; start it with node scripts/dev-preview.mjs and re-run this workflow"
+          if [ "$state" = "failure" ]; then
+            echo "::error title=Preview not reachable externally::$summary — a paused sandbox cannot serve its URL; start it with node scripts/dev-preview.mjs and re-run this workflow."
             exit 1
           fi
-          echo "External check passed: the preview answered 200 from GitHub's network."
+          echo "External check passed: the preview answered 200 from GitHub's network ($summary)."
