@@ -1,6 +1,6 @@
 # NEXT_TASK — resume here
 
-**Updated:** 2026-10-10 (after cycle 12) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
+**Updated:** 2026-10-11 (browser-safe path fix authored; build still pending) · **Branch:** `arena/ef58bc1d-otimizacao-cliente` (session branch)
 · **Central repo:** `https://github.com/heldergaraujo2/Otimizacao-cliente`
 
 > **Start here:** cycles 1–12 are committed and pushed (cycle 12 = monsters that wander); the last
@@ -8,6 +8,8 @@
 > cli 9, gateway 7). The vertical slice covers login → characters → map → scope for **players and
 > monsters** → authoritative movement and monster wander → ping → logout, with a browser client that
 > renders terrain, animated skinned characters and monsters.
+>
+> **Immediate validation gate:** run `npm run build:browser -w @mu-reengineer/client` and `npm run build -w @mu-reengineer/client` to verify the browser-safe path extraction. Then continue cycle 13, prioritising real-data visual fidelity (texture binding) because the user now has MU Red 1.20.61 data locally.
 >
 > **Next (cycle 13), in the order that pays off most:**
 > 1. **A minimal damage/kill flow** — `ObjectGotKilled` (C1 17: `KilledId` BE16, `SkillId` BE16,
