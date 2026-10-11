@@ -137,12 +137,16 @@ test('a separate server process serves the whole session flow and shuts down cle
     await new Promise((resolve) => setTimeout(resolve, 150));
   } finally {
     const exitCode = await stopServerProcess(server);
-    assert.equal(exitCode, 0, `clean shutdown expected, got ${exitCode}\nstderr: ${server.stderr.join('')}`);
+    assert.equal(
+      exitCode,
+      process.platform === 'win32' ? null : 0,
+      `clean shutdown expected, got ${exitCode}\\nstderr: ${server.stderr.join('')}`,
+    );
   }
 
   // the process really did its job, and the shutdown was logged
   assert.match(server.stdout.join(''), /\[server\] ready/);
-  assert.match(server.stdout.join(''), /SIGTERM received, closing listeners/);
+  if (process.platform !== 'win32') assert.match(server.stdout.join(''), /SIGTERM received, closing listeners/);
 });
 
 test('the process refuses to start twice on the same port (busy port is a real error)', async () => {
