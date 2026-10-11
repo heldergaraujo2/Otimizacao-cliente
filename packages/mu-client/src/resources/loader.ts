@@ -16,6 +16,8 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, relative as relativePath, resolve as resolvePath, sep } from 'node:path';
 
+import { DEFAULT_PATHS } from './paths.js';
+
 import {
   decodeDds,
   decodeOzb,
@@ -61,16 +63,6 @@ interface CacheEntry {
   size: number;
   mtimeMs: number;
 }
-
-/**
- * Classic server-side data layout. These names are what private-server tools use; if a data tree
- * differs, pass explicit paths instead (the CLI `scan` command lists what is actually there).
- */
-export const DEFAULT_PATHS = {
-  att: (worldIndex: number): string => `World${worldIndex}/EncTerrain${worldIndex}.att`,
-  map: (worldIndex: number): string => `World${worldIndex}/EncTerrain${worldIndex}.map`,
-  obj: (worldIndex: number): string => `World${worldIndex}/EncTerrain${worldIndex}.obj`,
-} as const;
 
 export interface ResourceLoaderOptions {
   root: string;
