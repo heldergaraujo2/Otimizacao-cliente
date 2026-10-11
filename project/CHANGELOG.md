@@ -47,8 +47,15 @@ the official E2B documentation instead of guesses.
 - `btime`/`uptime` cross-check of the 04:02:23 boot; `ps` tree showing the platform re-running
   `scripts/dev-preview.mjs` → gateway + Vite after the resume; `ss -ltnp` showing `0.0.0.0:5173` and
   `0.0.0.0:7788` owned by those processes.
-- The external fetch result is recorded in the workflow run linked from the cycle's report (the workflow
-  is on the branch; a red run while the sandbox is paused is the expected behaviour).
+- External (non-loopback) verification, first attempts: run `38110806699` **failed** while the preview was
+  healthy locally (the codes were not capturable at that time — GitHub's job logs live in blob storage
+  that the sandbox's egress allowlist blocks, `gh api .../jobs/<id>/logs` → 0 bytes). The workflow was
+  therefore changed to publish every HTTP status as an **annotation and a commit status**, which the
+  sandbox *can* read through github.com. Run `38110857672` resolved no URL (it skipped): the repository
+  variable cannot be managed with the Arena integration token (403 "Resource not accessible by
+  integration"), so the commit-message channel is the usable one here. The detailed external result is
+  recorded in the commit status `preview-check/external` of the latest pushed sha and in the run
+  annotations — see the cycle report for the numbers.
 
 **Limitation (unchanged, by platform design)**
 

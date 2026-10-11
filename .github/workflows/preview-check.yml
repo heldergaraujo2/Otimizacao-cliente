@@ -4,9 +4,12 @@ name: Preview check (from GitHub's network)
 # while being unreachable for a phone on mobile data. GitHub's runners sit on a different network, so a
 # successful fetch here IS the external evidence — and a failure here is a real finding, not a guess.
 #
-# How to point it at a URL: set the repository variable PREVIEW_URL (`gh variable set PREVIEW_URL
-# --body https://…`), or mention a single https:// URL anywhere in the commit message of the push that
-# should trigger it. With neither, the job skips instead of failing.
+# How to point it at a URL: mention a single https:// URL anywhere in the commit message of the push that
+# should trigger it, or set the repository variable PREVIEW_URL (`gh variable set PREVIEW_URL
+# --body https://…` — needs Actions-variables write permission; the Arena GitHub integration answers 403
+# "Resource not accessible by integration", so in this environment the commit-message channel is the one
+# that works). With neither, the job skips instead of failing — and says so, because a green run that
+# checked nothing must not be mistaken for evidence.
 #
 # Every HTTP status is published twice — as an annotation (visible in the run summary / `gh run view`)
 # and in a commit status description — because the workflow log lives in blob storage that the sandbox
@@ -44,7 +47,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "source=$source" >> "$GITHUB_OUTPUT"
           if [ -z "$url" ]; then
-            echo "::notice::No preview URL to check (set the repository variable PREVIEW_URL or mention one in the commit message)."
+            echo "::warning::No preview URL to check — this run verified NOTHING. Mention an https:// URL in the commit message or set the repository variable PREVIEW_URL."
           else
             echo "Checking $url (from the $source)."
           fi
